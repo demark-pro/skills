@@ -1,5 +1,17 @@
 # FSD placement rules
 
+## Contents
+
+- [Layers](#layers)
+- [app](#app)
+- [pages](#pages)
+- [widgets](#widgets)
+- [features](#features)
+- [entities](#entities)
+- [shared](#shared)
+- [Public API](#public-api)
+- [Cross-imports between entities](#cross-imports-between-entities)
+
 ## Layers
 
 ```txt

@@ -1,5 +1,17 @@
 # Effector modeling rules
 
+## Contents
+
+- [Static initialization](#static-initialization)
+- [sample is the main glue](#sample-is-the-main-glue)
+- [Events describe facts](#events-describe-facts)
+- [Stores are atomic](#stores-are-atomic)
+- [View models](#view-models)
+- [Effects](#effects)
+- [watch](#watch)
+- [effector-action](#effector-action)
+- [File organization](#file-organization)
+
 ## Static initialization
 
 Create all units at module level:

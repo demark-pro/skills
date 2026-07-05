@@ -1,5 +1,13 @@
 # Routing, forms, persistence, and i18n
 
+## Contents
+
+- [Routing](#routing)
+- [Forms](#forms)
+- [Persistence](#persistence)
+- [i18n](#i18n)
+- [Browser APIs](#browser-apis)
+
 ## Routing
 
 Prefer `atomic-router` when routing should be part of Effector graph.

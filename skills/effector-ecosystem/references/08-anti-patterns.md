@@ -1,5 +1,12 @@
 # Anti-patterns
 
+## Contents
+
+- [FSD anti-patterns](#fsd-anti-patterns)
+- [Effector anti-patterns](#effector-anti-patterns)
+- [Farfetched anti-patterns](#farfetched-anti-patterns)
+- [React anti-patterns](#react-anti-patterns)
+
 ## FSD anti-patterns
 
 ### Deep imports across slices

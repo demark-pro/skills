@@ -2,6 +2,21 @@
 
 Use this file when the user asks which package to use for a problem.
 
+## Contents
+
+- [Core state and business logic](#core-state-and-business-logic)
+- [React binding](#react-binding)
+- [Remote data](#remote-data)
+- [Runtime validation and DTO typing](#runtime-validation-and-dto-typing)
+- [Effector utilities](#effector-utilities)
+- [Routing](#routing)
+- [Persistence](#persistence)
+- [Forms](#forms)
+- [Internationalization](#internationalization)
+- [Browser/Web APIs](#browserweb-apis)
+- [Tooling](#tooling)
+- [Package choice defaults](#package-choice-defaults)
+
 ## Core state and business logic
 
 ### `effector`

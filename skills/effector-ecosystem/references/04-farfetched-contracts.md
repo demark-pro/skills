@@ -1,5 +1,16 @@
 # Farfetched and contracts
 
+## Contents
+
+- [Query placement](#query-placement)
+- [Contracts](#contracts)
+- [DTO and domain mapping](#dto-and-domain-mapping)
+- [createJsonQuery](#createjsonquery)
+- [createJsonMutation](#createjsonmutation)
+- [Concurrency](#concurrency)
+- [Cache update vs refetch](#cache-update-vs-refetch)
+- [Auth refresh](#auth-refresh)
+
 ## Query placement
 
 Place a query at the lowest layer where it remains reusable and meaningful.

@@ -1,5 +1,12 @@
 # React UI binding
 
+## Contents
+
+- [Default hook](#default-hook)
+- [Component responsibilities](#component-responsibilities)
+- [Component categories](#component-categories)
+- [Example](#example)
+
 ## Default hook
 
 Use `useUnit` from `effector-react`.
