@@ -1,0 +1,4 @@
+interface:
+  display_name: "Effector Ecosystem"
+  short_description: "Effector, FSD, and Farfetched architecture"
+  default_prompt: "Use $effector-ecosystem to design, review, or refactor an Effector/FSD frontend workflow."
