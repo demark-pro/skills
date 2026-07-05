@@ -1,231 +1,199 @@
-# FSD placement rules
+# FSD placement rules for Effector projects
+
+Use this file to decide where code belongs.
 
 ## Contents
 
-- [Layers](#layers)
-- [app](#app)
-- [pages](#pages)
-- [widgets](#widgets)
-- [features](#features)
-- [entities](#entities)
-- [shared](#shared)
-- [Public API](#public-api)
-- [Cross-imports between entities](#cross-imports-between-entities)
+- Layer dependency rule
+- Public API rule
+- Layer responsibilities
+- Remote operation placement
+- Next.js and framework routes
+- Segment rule
+- Import examples
 
-## Layers
+## Layer dependency rule
 
-```txt
-app
-pages
-widgets
-features
-entities
-shared
-```
-
-Allowed import direction:
+Allowed direction:
 
 ```txt
-app      -> pages, widgets, features, entities, shared
-pages    -> widgets, features, entities, shared
-widgets  -> features, entities, shared
-features -> entities, shared
-entities -> shared
-shared   -> external packages only
+app -> pages -> widgets -> features -> entities -> shared
 ```
 
-`app` and `shared` do not have business slices. Other layers are divided into slices.
+A layer can import only from layers below it.
 
-## `app`
+Same-layer cross-imports between slices are a code smell and must be deliberate. In practice, only entity-to-entity relationships may use `@x` public APIs when the team agrees on it.
 
-Put here:
+## Public API rule
 
-- application entrypoint
+Every slice must expose what external code may use through `index.ts`.
+
+```txt
+features/profile-update/
+  index.ts
+  ui/
+  model/
+  api/
+```
+
+External code:
+
+```ts
+// good
+import { ProfileUpdateForm, $$profileUpdate } from '@/features/profile-update';
+
+// bad
+import { $$profileUpdate } from '@/features/profile-update/model/profile-update.model';
+```
+
+Inside the same slice, use relative imports.
+
+## Layer responsibilities
+
+### `app`
+
+Use for:
+
+- app entrypoints
 - providers
-- global router config
-- scope creation
-- app lifecycle events
+- Effector scope setup
+- router setup
 - global styles
-- app-level error boundary
-- app-level feature flags/config wiring
+- app-wide initialization events
+- app-level persistence pickup
+- global error boundaries
 
-Do not put domain logic here unless it is truly app-wide orchestration.
+Do not put business domain workflows into `app`.
 
-## `pages`
+### `pages`
 
-Put here:
+Use for:
 
 - complete route screens
-- page-specific orchestration
-- route-driven data loading
-- page-specific table/list state
-- page-specific filter/sort/pagination state
-- page-specific query if not reusable
+- route-specific orchestration
+- page-local filters/sorting/pagination
+- page-specific queries that are not reusable domain API
+- route open/close flows
 
-A page can import widgets, features, entities, and shared.
+Page UI can compose widgets, features, and entity UI.
 
-## `widgets`
+A page model may connect route params, queries, filters, and feature completion events.
 
-Put here:
+### `widgets`
 
-- large reusable UI blocks composed from lower layers
-- layout blocks
-- complex page sections reused across pages
+Use for large reusable blocks assembled from lower layers:
 
-Examples:
+- header/sidebar
+- dashboard card grid
+- profile panel
+- product list block
 
-```txt
-widgets/main-layout
-widgets/profile-card
-widgets/feed-list
-widgets/search-panel
-```
+Do not create a widget for every small component. A widget should be reusable or architecturally meaningful.
 
-Do not create a widget for every component. If it is only used on one page and has no independent meaning, keep it in the page.
+### `features`
 
-## `features`
+Use for user actions/business capabilities:
 
-Put here user actions and business capabilities:
+- session-login
+- profile-update
+- comment-create
+- cart-add-product
+- theme-switch
 
-```txt
-features/session-login
-features/session-logout
-features/profile-update
-features/comment-create
-features/post-like
-features/theme-switch
-features/file-upload
-```
+A feature may own:
 
-A feature may contain:
+- form model
+- mutation
+- feature-specific query
+- UI connected to its model
+- validation and domain decision for this action
+
+Avoid technical feature names:
 
 ```txt
-ui/
-model/
-api/
-lib/
+features/open-modal      # bad
+features/set-search      # bad
+features/button-click    # bad
 ```
 
-A feature can import entities and shared, but cannot import pages or widgets.
+### `entities`
 
-Do not create features for technical actions:
+Use for domain nouns:
+
+- user
+- product
+- order
+- invoice
+
+An entity may own:
+
+- domain types
+- DTO contracts
+- basic reusable queries
+- entity stores
+- entity visual components
+- entity-specific lib functions
+
+Entities should not know about features/pages/widgets.
+
+### `shared`
+
+Use for domain-independent code:
+
+- API client/base URL
+- route path helpers without business orchestration
+- UI primitives
+- config
+- generic lib utilities
+- storage adapters
+- i18n initialization
+- assets
+
+Do not put domain types or endpoint soup into `shared`:
 
 ```txt
-features/open-modal       # bad
-features/set-input        # bad
-features/fetch-data       # bad
-features/change-page      # bad
+shared/types/user.ts       # bad
+shared/api/users.ts        # bad when user is a domain entity
+shared/ui/UserAvatar.tsx   # bad when it knows user domain
 ```
 
-## `entities`
+## Remote operation placement
 
-Put here domain objects:
+Place Farfetched operations by ownership:
 
 ```txt
-entities/user
-entities/session
-entities/post
-entities/comment
-entities/product
-entities/order
+entities/user/api/user.query.ts          # reusable user read
+features/profile-update/api/mutation.ts  # update action
+pages/users/api/users-page.query.ts       # page-specific table/list query
+shared/api/http.ts                        # generic request infra only
 ```
 
-An entity may contain:
+Contracts belong near the owner of the remote data.
 
-```txt
-model/   # types, contracts, mappers, entity state
-api/     # resource-level reusable operations
-ui/      # entity visual atoms
-lib/     # entity-local helpers
-@x/      # explicit cross-import API for other entities
-```
+## Next.js and framework routes
 
-Entity UI examples:
+Framework route files may live where the framework requires them (`app/`, `pages/`, `routes/`). Treat them as entry adapters.
 
-```txt
-UserAvatar
-UserName
-UserStatusBadge
-ProductPrice
-OrderStatus
-```
+They should import FSD pages/widgets/features through public APIs and should not become a place for business logic.
 
-Entity API examples:
+## Segment rule
 
-```txt
-userQuery
-usersQuery
-productQuery
-commentsQuery
-```
+Do not create all segments automatically. Add `ui`, `model`, `api`, `lib`, `config` only when real content exists.
 
-## `shared`
-
-Put here domain-independent code:
-
-```txt
-shared/ui
-shared/api
-shared/config
-shared/lib
-shared/routes
-shared/i18n
-shared/assets
-```
-
-`shared` must not know about `User`, `Product`, `Order`, or business workflows.
-
-Bad:
-
-```txt
-shared/types/user.ts
-shared/ui/user-card.tsx
-shared/api/users.ts
-```
-
-Good:
-
-```txt
-entities/user/model/user.contract.ts
-entities/user/ui/user-card.tsx
-entities/user/api/users.query.ts
-```
-
-## Public API
-
-Every slice must export public API through `index.ts`.
+## Import examples
 
 Good:
 
 ```ts
-import { UserAvatar, userQuery } from '@/entities/user';
-import { ProfileUpdateForm } from '@/features/profile-update';
+// pages/profile/model/profile-page.model.ts
+import { profileRoute } from '@/shared/routes';
+import { userQuery } from '@/entities/user';
+import { profileUpdated } from '@/features/profile-update';
 ```
 
 Bad:
 
 ```ts
-import { UserAvatar } from '@/entities/user/ui/user-avatar';
-import { $form } from '@/features/profile-update/model/form.model';
+// entities/user/model/user.model.ts
+import { ProfileUpdateForm } from '@/features/profile-update'; // upward import
 ```
-
-Inside a slice, use relative imports.
-
-Between slices, use absolute imports.
-
-## Cross-imports between entities
-
-Avoid same-layer imports by default.
-
-When entity A must expose something specifically for entity B, use `@x`:
-
-```txt
-entities/user/@x/order.ts
-entities/order/model/order.contract.ts
-```
-
-```ts
-import { UserContract } from '@/entities/user/@x/order';
-```
-
-Use `@x` rarely and intentionally.

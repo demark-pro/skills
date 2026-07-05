@@ -32,6 +32,8 @@ export const $isValid = $errors.map((errors) =>
   Object.values(errors).every((error) => error === null),
 );
 
+export const $submitDisabled = $isValid.map((isValid) => !isValid);
+
 sample({
   clock: formSubmitted,
   source: $values,
@@ -39,11 +41,14 @@ sample({
   // target: mutation.start,
 });
 
+// Public UI binding shape: use as `const { name, nameChanged } = useUnit($$form)`.
 export const $$form = {
   name: $name,
   email: $email,
+  values: $values,
   errors: $errors,
   isValid: $isValid,
+  submitDisabled: $submitDisabled,
   nameChanged,
   emailChanged,
   formSubmitted,

@@ -1,130 +1,217 @@
-# React UI binding
+# React UI binding with Effector
+
+Use this file when writing or reviewing React components.
 
 ## Contents
 
-- [Default hook](#default-hook)
-- [Component responsibilities](#component-responsibilities)
-- [Component categories](#component-categories)
-- [Example](#example)
+- Connected vs dumb components
+- Main rule: one `useUnit` shape per connected component
+- What to avoid
+- Scope and SSR
+- Deprecated/legacy bindings
+- Lists and item subscriptions
+- Gates
+- Forms
+- Effector units in render
+- Event handlers
 
-## Default hook
+## Connected vs dumb components
 
-Use `useUnit` from `effector-react`.
+Dumb component:
 
-```tsx
-const { value, changed, submitted, pending } = useUnit({
-  value: $value,
-  changed,
-  submitted,
-  pending: mutation.$pending,
-});
-```
+- receives ordinary props
+- renders markup
+- knows nothing about Effector units
 
-## Component responsibilities
+Connected component:
 
-UI may:
+- imports a model/query/mutation/route from a public API
+- calls `useUnit`
+- passes plain values/callbacks to dumb UI
 
-- render values
-- call events
-- call query/mutation starters exposed by the model
-- pass callbacks to UI primitives
+Prefer small connected components at slice boundaries.
 
-UI must not:
+## Main rule: one `useUnit` shape per connected component
 
-- create units
-- call `sample`
-- call API directly
-- call `$store.getState()`
-- contain domain workflow orchestration
-- decide cross-feature side effects
+For units from the same model, prefer one `useUnit` call with an object or array shape and destructure the result.
 
-## Component categories
-
-### Shared UI primitive
-
-Path:
-
-```txt
-shared/ui/button/button.tsx
-shared/ui/input/input.tsx
-shared/ui/dialog/dialog.tsx
-```
-
-Properties:
-
-- domain-independent
-- no Effector unless it is purely generic and justified
-- no app-specific imports
-
-### Entity visual
-
-Path:
-
-```txt
-entities/user/ui/user-avatar.tsx
-entities/product/ui/product-price.tsx
-```
-
-Properties:
-
-- represents a domain entity
-- accepts domain data or minimal props
-- no feature/page logic
-
-### Feature UI
-
-Path:
-
-```txt
-features/profile-update/ui/profile-update-form.tsx
-```
-
-Properties:
-
-- connected to feature model
-- represents a user action
-- may import entity visuals and shared UI
-
-### Page UI
-
-Path:
-
-```txt
-pages/profile/ui/profile-page.tsx
-```
-
-Properties:
-
-- assembles widgets/features/entities
-- connects page model if needed
-- delegates behavior to model
-
-## Example
+### Object shape: preferred for readability
 
 ```tsx
 import { useUnit } from 'effector-react';
-import { Button } from '@/shared/ui/button';
 import { $$profileUpdate } from '../model/profile-update.model';
 
 export function ProfileUpdateForm() {
-  const vm = useUnit($$profileUpdate);
+  const {
+    name,
+    email,
+    errors,
+    submitDisabled,
+    nameChanged,
+    emailChanged,
+    submitted,
+  } = useUnit($$profileUpdate);
 
   return (
     <form onSubmit={(event) => {
       event.preventDefault();
-      vm.formSubmitted();
+      submitted();
     }}>
-      <input
-        value={vm.name}
-        onChange={(event) => vm.nameChanged(event.target.value)}
-      />
-
-      <Button disabled={vm.submitDisabled || vm.pending}>
-        Save
-      </Button>
+      <input value={name} onChange={(event) => nameChanged(event.currentTarget.value)} />
+      <input value={email} onChange={(event) => emailChanged(event.currentTarget.value)} />
+      <button disabled={submitDisabled}>Save</button>
     </form>
   );
 }
 ```
 
-The component adapts DOM events to model events. It does not decide business flow.
+Model shape:
+
+```ts
+export const $$profileUpdate = {
+  name: $name,
+  email: $email,
+  errors: $errors,
+  submitDisabled: $submitDisabled,
+  nameChanged,
+  emailChanged,
+  submitted,
+};
+```
+
+### Array shape: useful for local small bindings
+
+```tsx
+const [value, submitDisabled, valueChanged, submitted] = useUnit([
+  $value,
+  $submitDisabled,
+  valueChanged,
+  submitted,
+]);
+```
+
+Use arrays only when order is obvious and stable. Prefer object shape for public model APIs.
+
+## What to avoid
+
+Avoid many separate `useUnit` calls in one component:
+
+```tsx
+// bad by default
+const value = useUnit($value);
+const submitDisabled = useUnit($submitDisabled);
+const valueChanged = useUnit(valueChangedEvent);
+const submitted = useUnit(submittedEvent);
+```
+
+This is harder to review, easier to partially refactor incorrectly, and increases the chance of unused subscriptions. Split the component when different parts need independent subscriptions.
+
+Avoid passing raw events/effects to DOM handlers:
+
+```tsx
+// bad in Scope/SSR-aware apps
+<button onClick={() => submittedEvent()}>Save</button>
+```
+
+Use the bound function returned by `useUnit`:
+
+```tsx
+const { submitted } = useUnit({ submitted: submittedEvent });
+<button onClick={() => submitted()}>Save</button>
+```
+
+## Scope and SSR
+
+When an app uses Scope, tests, SSR, or hydration, events/effects must be bound to the current Scope before passing to DOM/event handlers.
+
+Use:
+
+```tsx
+<Provider value={scope}>
+  <App />
+</Provider>
+```
+
+and bind units with `useUnit` in React.
+
+Do not call raw units directly from components.
+
+## Deprecated/legacy bindings
+
+Avoid in new code:
+
+- `useStore`
+- `useEvent`
+- `connect`
+- HOCs from older Effector React patterns
+
+Use `useUnit` instead.
+
+## Lists and item subscriptions
+
+For large lists, avoid subscribing a whole list item component to the entire list if it only needs one item.
+
+Use:
+
+- `useList` for rendering store-backed lists
+- `useStoreMap` for selecting one item by id
+- component splitting when only a small subtree needs a store
+
+Keep list transformation in models when it is business/domain behavior. UI-only presentation mapping can stay in UI.
+
+## Gates
+
+Use Gates only for lifecycle facts that genuinely belong to a component boundary:
+
+- component mounted/unmounted
+- route widget appeared
+- visible props entered a model
+
+Do not use Gate as a hidden API call trigger when route/page events are clearer.
+
+## Forms
+
+UI should:
+
+- bind form values/errors/actions through a single `useUnit` shape
+- translate labels/messages
+- call bound events in handlers
+
+UI should not:
+
+- decide if a business transition is allowed
+- call mutations directly if a form event should own the flow
+- parse backend errors
+
+## Effector units in render
+
+Never create units in render or hooks:
+
+```tsx
+function Component() {
+  const clicked = createEvent(); // bad
+}
+```
+
+Create models statically and import them.
+
+## Event handlers
+
+Good:
+
+```tsx
+const { searchChanged } = useUnit({ searchChanged });
+<input onChange={(event) => searchChanged(event.currentTarget.value)} />
+```
+
+Good for submit:
+
+```tsx
+const { submitted } = useUnit({ submitted });
+<form onSubmit={(event) => {
+  event.preventDefault();
+  submitted();
+}} />
+```
+
+Avoid putting business logic in handlers.

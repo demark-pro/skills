@@ -8,6 +8,7 @@ This example is not admin-specific. It can represent posts, products, messages, 
 entities/item/
   index.ts
   model/item.contract.ts
+  model/item.types.ts
   api/items.query.ts
   ui/item-title.tsx
 
@@ -23,6 +24,7 @@ pages/items/
   ui/items-page.tsx
   model/page.model.ts
   model/filters.model.ts
+  api/items-page.query.ts  # only if list params/shape are page-specific
 ```
 
 ## Page orchestration
@@ -42,3 +44,41 @@ sample({
 ```
 
 The create feature does not know which page should refetch. The page owns that decision.
+
+## Search/filter concurrency
+
+```ts
+concurrency(itemsQuery, { strategy: 'TAKE_LATEST' });
+```
+
+Use `TAKE_LATEST` for fast-changing search/filter requests. Use `cache` or `keepFresh` only when freshness behavior is intentional.
+
+## Page model UI shape
+
+```ts
+export const $$itemsPage = {
+  items: itemsQuery.$data,
+  pending: itemsQuery.$pending,
+  search: $search,
+  page: $page,
+  searchChanged,
+  pageChanged,
+  retryClicked: itemsQuery.refresh,
+};
+```
+
+## Page component binding
+
+```tsx
+const {
+  items,
+  pending,
+  search,
+  page,
+  searchChanged,
+  pageChanged,
+  retryClicked,
+} = useUnit($$itemsPage);
+```
+
+Keep table/list rendering in UI. Keep filtering, pagination params, refetch rules, and feature-completion reactions in the page model.

@@ -40,3 +40,22 @@ export { featureCompleted } from './model/feature.model';
 ```
 
 Export only what other slices need.
+
+## Connected UI rule
+
+Connected feature UI should bind model units with one object/array `useUnit` shape:
+
+```tsx
+const { value, pending, valueChanged, submitted } = useUnit($$feature);
+```
+
+The model should expose a stable UI shape:
+
+```ts
+export const $$feature = {
+  value: $value,
+  pending: mutation.$pending,
+  valueChanged,
+  submitted,
+};
+```

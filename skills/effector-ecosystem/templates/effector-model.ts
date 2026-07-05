@@ -7,22 +7,26 @@ export const submitted = createEvent();
 export const $value = createStore('')
   .on(valueChanged, (_, value) => value);
 
-export const $submitDisabled = $value.map((value) => value.trim().length === 0);
+export const $canSubmit = $value.map((value) => value.trim().length > 0);
+export const $submitDisabled = $canSubmit.map((canSubmit) => !canSubmit);
 
 sample({
   clock: submitted,
   source: $value,
-  filter: $submitDisabled.map((disabled) => !disabled),
+  filter: $canSubmit,
   // target: mutation.start,
 });
 
 export const $vm = combine({
   value: $value,
+  canSubmit: $canSubmit,
   submitDisabled: $submitDisabled,
 });
 
+// Public UI binding shape: use as `const { value, submitted } = useUnit($$model)`.
 export const $$model = {
   value: $value,
+  canSubmit: $canSubmit,
   submitDisabled: $submitDisabled,
   valueChanged,
   submitted,

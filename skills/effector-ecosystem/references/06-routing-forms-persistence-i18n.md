@@ -1,124 +1,190 @@
-# Routing, forms, persistence, and i18n
+# Routing, forms, persistence, i18n, and browser APIs
+
+Use this file for integration topics around Effector models.
 
 ## Contents
 
-- [Routing](#routing)
-- [Forms](#forms)
-- [Persistence](#persistence)
-- [i18n](#i18n)
-- [Browser APIs](#browser-apis)
+- Routing with Atomic Router
+- Forms
+- Persistence with `effector-storage`
+- i18n
+- Browser APIs with `@withease/web-api`
+- Application startup
 
-## Routing
+## Routing with Atomic Router
 
-Prefer `atomic-router` when routing should be part of Effector graph.
+Use `atomic-router` when routes are part of Effector data flow.
 
-Structure:
+Common placement:
 
 ```txt
-app/routes/router.ts
-app/routes/routes.ts
-pages/profile/route.ts
+shared/routes/index.ts          # route declarations/paths shared by app
+pages/profile/route.ts          # page route ownership/re-export if needed
 pages/profile/model/page.model.ts
 ```
 
-Page route:
+Route model pattern:
 
 ```ts
-// pages/profile/route.ts
-import { createRoute } from 'atomic-router';
+import { createRoute, chainRoute } from 'atomic-router';
+import { sample } from 'effector';
+import { profileQuery } from '@/entities/user';
 
-export const profileRoute = createRoute();
-```
+export const profileRoute = createRoute<{ userId: string }>();
 
-App routes:
-
-```ts
-// app/routes/routes.ts
-import { profileRoute } from '@/pages/profile';
-
-export const routes = [
-  { path: '/profile', route: profileRoute },
-];
-```
-
-Route-driven loading:
-
-```ts
 sample({
   clock: profileRoute.opened,
+  fn: ({ params }) => ({ id: params.userId }),
   target: profileQuery.start,
 });
 ```
 
-Do not navigate from UI when the navigation is a business consequence. Trigger an event and let the model decide.
+Use `chainRoute` when opening a route must wait for data or permissions before a child/loaded route becomes active.
+
+Use Farfetched Atomic Router integration when a Farfetched Query is the route loader.
+
+Do not put route open/close orchestration into React components.
 
 ## Forms
 
-For simple forms, use plain Effector stores/events.
+### Plain Effector form
 
-Structure:
+Default form structure:
 
-```txt
-features/profile-update/model/form.model.ts
-features/profile-update/ui/profile-update-form.tsx
+```ts
+export const nameChanged = createEvent<string>();
+export const formSubmitted = createEvent();
+
+export const $name = createStore('').on(nameChanged, (_, value) => value);
+export const $errors = combine($name, (name) => ({ name: name ? null : 'Required' }));
+export const $isValid = $errors.map((errors) => !errors.name);
+
+sample({
+  clock: formSubmitted,
+  source: $name,
+  filter: $isValid,
+  fn: (name) => ({ name }),
+  target: updateProfileMutation.start,
+});
 ```
 
-Use `effector-forms` only when it reduces repeated form boilerplate across the project.
+Use for most forms unless a dedicated form library clearly reduces boilerplate.
 
-Rules:
+### `effector-forms`
 
-- form fields are events/stores/model units
-- submit is an event
-- validation is in model/lib, not JSX
-- server errors are mapped in model
-- UI only renders state and sends events
+Use `effector-forms` when you need a form abstraction with field-level state, validation, touched/dirty metadata, and repeated patterns.
 
-## Persistence
+Keep form ownership in the feature/page model. UI may use `useForm` or expose a model shape for `useUnit`.
 
-Use `effector-storage` for persistent stores.
+## Persistence with `effector-storage`
 
-Examples:
+Persist only safe external state:
 
 - theme
-- language
-- sidebar collapsed state
-- user preferences
-- local drafts
+- locale
+- UI preferences
 - safe filters
+- local drafts
 
-Avoid persistence for:
+Do not persist secrets or large remote data without a deliberate security/cache strategy.
 
-- sensitive tokens unless security model explicitly allows it
-- large remote data without cache strategy
-- derived data that can be recomputed
+Use contracts because external storage is untrusted.
 
-Persistence belongs near the store it persists or in an infrastructure file if shared:
+```ts
+import { createEvent, createStore } from 'effector';
+import { persist } from 'effector-storage/local';
+import { or, val } from '@withease/contracts';
 
-```txt
-features/theme-switch/model/theme.model.ts
-shared/lib/storage
+export const appStarted = createEvent();
+export const themeChanged = createEvent<'light' | 'dark'>();
+
+export const $theme = createStore<'light' | 'dark'>('light')
+  .on(themeChanged, (_, theme) => theme);
+
+persist({
+  store: $theme,
+  key: 'theme',
+  contract: or(val('light'), val('dark')),
+  pickup: appStarted,
+});
 ```
+
+For Scope/SSR, prefer explicit `pickup` to load the value in the right Scope.
+
+Use `clock` when storage writes should happen only on a specific event.
 
 ## i18n
 
-Use `react-i18next` for ordinary UI translations.
+Use `i18next`/`react-i18next` for ordinary UI translations.
 
-Use `@withease/i18next` when:
+Use `@withease/i18next` when language must participate in Effector data flow.
 
-- language is part of Effector model
-- route/domain logic depends on language
-- you want Effector-native language switching
+Typical placement:
 
-Do not put translated strings into domain stores. Store translation keys or domain values; translate in UI.
+```txt
+shared/i18n/
+  i18n.ts
+  i18n.model.ts
+app/providers/i18n-provider.tsx
+features/language-switch/model/
+```
 
-## Browser APIs
+Rules:
 
-Use `@withease/web-api` or small `shared/lib` adapters for browser signals:
+- store language/code/domain values, not already translated strings
+- translate in UI or at a presentation boundary
+- use language store as source for language-dependent queries
+- refresh language-dependent queries on language change when needed
+
+Example flow:
+
+```ts
+sample({
+  clock: languageChanged,
+  target: changeLanguageFx,
+});
+```
+
+With Farfetched, combine `$language` with query params or use `keepFresh` on language changes.
+
+## Browser APIs with `@withease/web-api`
+
+Use Web API integrations for browser signals instead of scattering listeners in components.
+
+Useful signals:
 
 - online/offline
 - page visibility
 - media queries
-- clipboard
-- local notifications
+- orientation
+- languages
+- geolocation
 
-Do not attach raw event listeners in many components.
+Pattern:
+
+```ts
+export const appStarted = createEvent();
+export const appDestroyed = createEvent();
+
+// integration created in shared/lib or app integration
+// setup: appStarted, teardown: appDestroyed
+```
+
+Use page visibility or network status as Farfetched `keepFresh` triggers when refetching on focus/reconnect is desired.
+
+## Application startup
+
+Prefer one explicit app-start event:
+
+```ts
+export const appStarted = createEvent();
+```
+
+Use it to:
+
+- initialize browser integrations
+- pick up persisted state
+- start initial queries
+- initialize i18n
+
+Do not hide initialization in random component effects.

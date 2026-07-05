@@ -4,18 +4,19 @@ Use this file when the user asks which package to use for a problem.
 
 ## Contents
 
-- [Core state and business logic](#core-state-and-business-logic)
-- [React binding](#react-binding)
-- [Remote data](#remote-data)
-- [Runtime validation and DTO typing](#runtime-validation-and-dto-typing)
-- [Effector utilities](#effector-utilities)
-- [Routing](#routing)
-- [Persistence](#persistence)
-- [Forms](#forms)
-- [Internationalization](#internationalization)
-- [Browser/Web APIs](#browserweb-apis)
-- [Tooling](#tooling)
-- [Package choice defaults](#package-choice-defaults)
+- Core state and business logic
+- React binding
+- Remote data
+- Runtime validation and DTO typing
+- Effector utilities
+- Routing
+- Persistence
+- Forms
+- Internationalization
+- Browser/Web APIs
+- Redux migration/interoperability
+- Tooling
+- Package choice defaults
 
 ## Core state and business logic
 
@@ -28,9 +29,11 @@ Use for:
 - derived state
 - effects not covered by Farfetched
 - application lifecycle
-- testing through `fork` and `allSettled`
+- testing through `fork`, `allSettled`, and scoped assertions
 
-Do not use React state for business workflows that must be shared, tested, or coordinated with API/routing.
+Prefer Effector over React state when the state is shared, testable, participates in routing/API orchestration, or must survive component remounts.
+
+Do not use React state for cross-component business workflows.
 
 ## React binding
 
@@ -38,18 +41,32 @@ Do not use React state for business workflows that must be shared, tested, or co
 
 Use for:
 
-- `useUnit` in React components
-- `<Provider value={scope}>` when using Scope
+- `useUnit` in connected React components
+- `<Provider value={scope}>` when using Scope/SSR/tests
+- `useGate`/Gate only for component lifecycle facts
+- `useList`/`useStoreMap` for list and item-level subscription optimization
 
-Avoid `useStore`/manual subscriptions in new code unless there is a specific reason.
+Default connected-component rule:
+
+```tsx
+const { value, valueChanged, submitted } = useUnit($$model);
+```
+
+Use one `useUnit` call with an object or array shape for units from the same model. Destructure all returned fields. Split a component if render granularity matters.
+
+Avoid deprecated or legacy bindings (`useStore`, `useEvent`, HOCs) in new code unless maintaining old code.
 
 ### `@effector/next`
 
-Use for:
-
-- Next.js applications where Effector Scope, SSR, serialization, and hydration need first-class integration
+Use for Next.js applications where Effector Scope, SSR, serialization, and hydration need first-class integration.
 
 Do not add it to plain Vite/SPA projects.
+
+### `@effector/reflect`
+
+Use when a project deliberately prefers a declarative HOC-like binding layer between Effector and React components, especially for reusable presentational components.
+
+Do not use it just to avoid writing `useUnit`; ordinary connected components should normally use `useUnit` directly.
 
 ## Remote data
 
@@ -57,13 +74,12 @@ Do not add it to plain Vite/SPA projects.
 
 Use for:
 
-- queries
-- mutations
-- request status
+- HTTP queries and mutations
+- request status and lifecycle
 - cancellation/concurrency
-- cache update/refetch
-- auth barriers
-- request lifecycle
+- cache, stale data, refresh, and updates
+- auth barriers and retry-like infrastructure
+- runtime response validation through contracts
 
 Use `createJsonQuery`/`createJsonMutation` for ordinary JSON HTTP APIs.
 
@@ -73,150 +89,215 @@ Do not write custom `createEffect(fetch)` wrappers for every endpoint when Farfe
 
 ### `@withease/contracts`
 
-Use as the default contract solution for Farfetched responses.
+Use as the default contract solution for Farfetched responses and persisted external data.
 
 Use for:
 
 - backend DTO contracts
 - runtime validation of remote data
 - `UnContract` type extraction
+- validation of `effector-storage` values
 
-Do not trust backend data only because TypeScript type says it is valid.
+Keep contracts near the domain that owns the data:
+
+```txt
+entities/user/model/user.contract.ts
+features/profile-update/model/profile-update.contract.ts
+shared/api/problem.contract.ts
+```
+
+Do not put all contracts into `shared/contracts` unless they are truly domain-independent.
+
+Other validators can be used if the project already standardizes on them, but the skill should default to `@withease/contracts`.
 
 ## Effector utilities
 
 ### `patronum`
 
-Use for common operators:
+Use for common declarative operators:
 
-- `debounce`
-- `throttle`
-- `delay`
-- `condition`
-- `status`
-- `pending`
-- `spread`
-- `reshape`
-- `reset`
-- `combineEvents`
+- `debounce`, `throttle`, `delay`, `interval`
+- `reset`, `spread`, `reshape`, `condition`
+- `status`, `pending`, `inFlight`
+- `combineEvents`, `not`, `and`, `or`
 
-Do not reimplement these operators manually in every model.
-
-## Complex synchronous branching
+Do not reimplement common operators with `watch`, timers, or ad-hoc effect chains.
 
 ### `effector-action`
 
-Use sparingly when one synchronous business action becomes unreadable as many nested `sample`/`split` calls.
+Use when a single decision point has many branches and repeated `sample` blocks become harder to read.
 
-Good use:
+Good use case:
 
-- one event has many branches
-- all branches are synchronous
-- `sample` graph becomes less readable than a local action body
+- imperative-looking but still Effector-native branching over stores/events
+- many targets chosen from the same source/clock
 
-Do not use it as an excuse to write imperative application logic everywhere.
-
-## Reusable model factories
+Do not use it for simple one- or two-step flows where `sample` is clearer.
 
 ### `@withease/factories`
 
-Use for reusable model factories:
+Use for model factories when a slice needs multiple independent instances of the same model.
 
-- repeated table models
-- modal models
-- form sections
-- feature factories
-- model composition with unique unit identity
+Use only when repeated model instances are real, for example:
 
-Do not create model factories inside React components.
+- many independent forms with the same behavior
+- reusable tabs/list filters
+- per-widget isolated models
 
-When using factories, configure the Effector SWC/Babel plugin if required by your build setup.
+Rules:
+
+- invoke factories at module top level, not inside React render
+- configure Effector Babel/SWC plugin for factories/SIDs when needed
+- prefer one config object argument
+- export a ready instance from a slice public API, not the raw factory unless the consumer must create instances
 
 ## Routing
 
 ### `atomic-router`
 
-Use when routing should participate in Effector graph:
+Use when routes are part of Effector architecture:
 
-- typed routes
-- route opened/closed events
-- route guards
-- `chainRoute`
-- route-driven data loading
+- typed route params
+- route open/close events
+- data loading on route open
+- guards and redirects
+- route composition with `chainRoute`
 
-Do not put navigation decisions directly in UI when they are business decisions.
+Put route declarations in `shared/routes` or slice `route.ts` depending on ownership. Route-specific orchestration belongs to the page model, not the UI.
 
-If the project already uses React Router, you can keep it, but isolate routing integration in `app/routes` and page models.
+Use Farfetched integration when a query is the `chainRoute` loader.
 
 ## Persistence
 
 ### `effector-storage`
 
-Use for syncing stores with:
+Use for synchronization with external storages:
 
-- localStorage
-- sessionStorage
-- cookies
-- IndexedDB
-- async storage
-- server-side storage adapters
-
-Use for user preferences, theme, filters, draft state, and tokens only if the security model permits it.
-
-Do not persist large remote data caches unless there is a clear offline/cache strategy.
-
-## Forms
-
-### Plain Effector model
+- localStorage/sessionStorage
+- URL query storage
+- cookies/server-side storage
+- IndexedDB/async adapters when configured
 
 Use for:
 
-- small forms
-- custom business validation
-- forms tightly connected to a feature model
+- theme
+- locale
+- safe preferences
+- local drafts
+- non-sensitive filters
+
+Avoid persistence for:
+
+- sensitive tokens unless the security model explicitly allows it
+- large remote data without a cache strategy
+- derived data that can be recomputed
+
+When using Scope/SSR, prefer explicit `pickup` and enable linting for it. Validate untrusted persisted data with a `contract`.
+
+## Forms
+
+### Plain Effector form model
+
+Default for small/medium forms:
+
+- stores for values
+- derived stores for errors and validity
+- `sample` from `formSubmitted` to mutation/query
+- reset on success/route close where appropriate
 
 ### `effector-forms`
 
-Use when:
+Use when the project benefits from a dedicated form abstraction:
 
-- the project has many complex forms
-- declarative field state and validation reduce boilerplate
-- the team accepts an additional form abstraction
+- many fields with similar validation lifecycle
+- touched/dirty/error metadata
+- repeated form patterns
+- existing team convention around `effector-forms`
 
-Do not introduce a form library for one simple form.
+Keep form business rules in the feature/page model. UI can use `useForm` or a single `useUnit` shape from the form model.
 
 ## Internationalization
 
-### `i18next` / `react-i18next`
+### `react-i18next` / `i18next`
 
-Use for ordinary React translations.
+Use for ordinary UI translations.
 
 ### `@withease/i18next`
 
-Use when i18n state or language switching should be integrated into Effector models.
+Use when language is part of Effector-driven state or orchestration:
 
-Do not store translated strings in Effector stores if they can be derived at render time from keys.
+- language switch flows
+- language-dependent routes
+- language-dependent queries
+- reactive `$t`, `$language`, `$isReady` usage in models
+
+Do not put translated strings into domain stores. Store translation keys or domain values; translate in UI or at the boundary.
 
 ## Browser/Web APIs
 
 ### `@withease/web-api`
 
-Use for Effector-friendly bindings to browser APIs such as online/offline state, page visibility, and similar environment signals.
+Use for browser signals as Effector units/triggers:
 
-Do not scatter raw browser event listeners across components when a reusable Effector binding is more appropriate.
+- online/offline
+- page visibility
+- media queries
+- orientation
+- languages
+- geolocation
+
+Use these signals with Farfetched `keepFresh` or app lifecycle when appropriate. Prefer explicit setup/teardown events instead of scattered DOM listeners in components.
+
+## Redux migration/interoperability
+
+### `@withease/redux`
+
+Use only for migration or interop with existing Redux code.
+
+Do not introduce Redux into a new Effector-first architecture.
 
 ## Tooling
 
 ### `eslint-plugin-effector`
 
-Use recommended, react, patronum, and scope presets according to project needs.
+Use presets:
 
-### Steiger and `@feature-sliced/steiger-plugin`
+- `recommended` for base Effector practices
+- `react` for React-specific rules such as `prefer-useUnit`, exhaustive `useUnit` destructuring, no units in render, and mandatory scope binding
+- `scope` for Fork API / Scope projects
+- `patronum` when using Patronum
+- `future` only when the team intentionally wants stricter future-oriented rules
 
-Use to check FSD architecture, public API usage, and import boundaries.
+### Steiger / `@feature-sliced/steiger-plugin`
 
-Steiger is useful, but if a rule conflicts with a justified project-specific decision, document the exception.
+Use to enforce FSD public API, imports, layers, slices, and cross-import rules. Document intentional exceptions.
 
-### `@effector/swc-plugin` or Effector Babel plugin
+### Effector Babel/SWC plugin
 
-Use when the project needs SIDs, SSR serialization/hydration, factories, or better debugging.
+Use when the project needs:
+
+- stable SIDs
+- SSR serialization/hydration
+- factory support
+- better unit names/debugging
+- HMR support where applicable
+
+Community package factories are usually recognized by the plugin, but local factories still require correct configuration.
+
+## Package choice defaults
+
+- Business state: `effector`
+- React binding: `effector-react` + one `useUnit` shape per connected component
+- HTTP: Farfetched
+- Runtime validation: `@withease/contracts`
+- Common operators: `patronum`
+- Complex branching: `effector-action` only when it improves readability
+- Typed routing: `atomic-router`
+- Persistence: `effector-storage` with `contract` and explicit `pickup` for scopes
+- i18n UI only: `react-i18next`
+- i18n as app state: `@withease/i18next`
+- Browser signals: `@withease/web-api`
+- Reusable model instances: `@withease/factories`
+- Next.js SSR: `@effector/next` + plugin/SIDs
+- FSD linting: Steiger
+- Effector linting: `eslint-plugin-effector`

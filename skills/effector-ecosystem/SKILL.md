@@ -12,11 +12,11 @@ Use this skill for frontend applications that use or plan to use:
 
 - React or React-compatible UI
 - Effector for business logic and state
-- effector-react for binding units to components
+- `effector-react` for binding units to components
 - Feature-Sliced Design for project structure
 - Farfetched for remote operations
-- `@withease/contracts` or compatible contracts for response validation
-- Supporting packages from the Effector ecosystem: `patronum`, `atomic-router`, `effector-storage`, `effector-action`, `@withease/factories`, `@withease/i18next`, `@withease/web-api`, `eslint-plugin-effector`, Steiger
+- `@withease/contracts` or compatible contracts for runtime validation
+- Supporting packages from the Effector ecosystem: `patronum`, `atomic-router`, `effector-storage`, `effector-action`, `effector-forms`, `@withease/factories`, `@withease/i18next`, `@withease/web-api`, `@effector/next`, `@effector/reflect`, `@withease/redux`, `eslint-plugin-effector`, Steiger, Effector Babel/SWC plugins
 
 This skill is **not specific to admin panels**. Admin tables and CRUD are examples, not the default assumption.
 
@@ -37,7 +37,7 @@ Use this skill when the user asks about:
 - Choosing packages in the Effector ecosystem
 - Refactoring from component-local logic into Effector models
 - Reviewing code for architecture violations
-- Creating templates for slices, models, API, forms, routing, or tests
+- Creating templates for slices, models, API, forms, routing, persistence, or tests
 
 ## First response behavior
 
@@ -65,8 +65,9 @@ If the user gives code, review the code against this skill and return:
 React components must:
 
 - render data
-- call events or mutation/query starters
+- call events, effects, query/mutation starters, or route actions already prepared in models
 - pass props to dumb components
+- bind Effector units through `useUnit`
 
 React components must not:
 
@@ -76,8 +77,41 @@ React components must not:
 - call `sample`, `createEvent`, `createStore`, `createEffect`, or factories during render
 - read stores through `$store.getState()`
 - use `watch` for application behavior
+- pass raw events/effects to DOM handlers or ordinary callback props when Scope/SSR may be used
 
-### 2. Effector models must be static and declarative
+### 2. Prefer one `useUnit` shape per connected component
+
+For every component that reads/calls several Effector units from the same model, prefer a single `useUnit` call with an object or array shape:
+
+```tsx
+const { value, submitDisabled, valueChanged, submitted } = useUnit($$form);
+```
+
+or:
+
+```tsx
+const [value, submitDisabled, valueChanged, submitted] = useUnit([
+  $value,
+  $submitDisabled,
+  valueChanged,
+  submitted,
+]);
+```
+
+Then destructure every returned value and pass the bound callbacks to JSX.
+
+Avoid repeated bindings in the same component:
+
+```tsx
+// bad by default: noisy and easier to desync during refactoring
+const value = useUnit($value);
+const submitDisabled = useUnit($submitDisabled);
+const valueChanged = useUnit(valueChangedEvent);
+```
+
+Split the component when subscription granularity matters instead of scattering many `useUnit` calls in one component.
+
+### 3. Effector models must be static and declarative
 
 Create units at module level only.
 
@@ -86,10 +120,12 @@ Use:
 - `createEvent` for facts that happened
 - `createStore` for state
 - `createEffect` only for side effects not already handled by Farfetched
+- `attach` to inject stores/params into an effect declaratively
 - `sample` as the main connection operator
 - `combine` for view models
 - `split` or `effector-action` for complex branching when it improves readability
 - `patronum` for common operators like debounce, throttle, reset, status, pending helpers
+- `scopeBind` for callbacks that leave Effector's call stack and must still work inside a Scope
 
 Avoid:
 
@@ -98,9 +134,11 @@ Avoid:
 - `watch` for logic
 - `$store.getState()` for production logic
 - creating models from React components
+- using derived stores as mutation targets
+- returning `undefined` from store reducers unless `skipVoid: false` is intentional
 - huge object stores when several atomic stores are clearer
 
-### 3. Farfetched owns remote operations
+### 4. Farfetched owns remote operations
 
 Use Farfetched for backend communication:
 
@@ -108,13 +146,15 @@ Use Farfetched for backend communication:
 - `createJsonMutation` for data writes
 - `declareParams<T>()` for typed params
 - `response.contract` for runtime validation
-- `concurrency` for search, filters, and fast-changing requests
-- `Barrier` for auth refresh or unavailable-resource flows
-- `update` only when local cache update is safe and predictable
+- `mapData` to map DTOs after validation
+- `mapError` to normalize transport/validation/domain errors
+- `concurrency` operator for search, filters, and fast-changing requests
+- `createBarrier` + `applyBarrier` for auth refresh or unavailable-resource flows
+- `keepFresh`, `cache`, `.refresh`, and `update` for refresh/cache semantics when appropriate
 
 Never trust backend data without a contract.
 
-### 4. FSD boundaries must be explicit
+### 5. FSD boundaries must be explicit
 
 Use layers:
 
@@ -130,11 +170,11 @@ External code must import from slice public API, not internal files.
 
 Inside a slice, use relative imports. Between slices, use absolute imports.
 
-### 5. Packages are chosen by purpose
+### 6. Packages are chosen by purpose
 
 Do not add packages because they are popular. Choose them when they solve a specific architectural problem.
 
-Use the package map in `references/01-package-map.md`.
+Use the package map in `references/01-package-map.md` and the detailed notes in `references/10-ecosystem-library-notes.md`.
 
 ## Default project shape
 
@@ -238,45 +278,29 @@ Avoid vague names:
 ```ts
 // bad
 export const setData = createEvent<any>();
-export const $state = createStore({});
-export const doSomethingFx = createEffect();
+export const update = createEvent();
+export const fx = createEffect();
 ```
-
-## Output style for generated code
-
-When generating code:
-
-1. Show the target folder path first.
-2. Keep UI and model separate.
-3. Export only public API.
-4. Add contracts for remote data.
-5. Use `sample` instead of imperative glue.
-6. Add notes for package choice only when needed.
-7. Mention any assumptions.
 
 ## Required references
 
-When a task involves a specific area, consult the matching reference file:
+Before giving a detailed answer, consult the relevant files:
 
-- Package choice: `references/01-package-map.md`
-- FSD placement: `references/02-fsd-placement.md`
-- Effector modeling: `references/03-effector-modeling.md`
-- Farfetched/contracts: `references/04-farfetched-contracts.md`
-- React binding: `references/05-react-ui-binding.md`
-- Routing/forms/persistence/i18n: `references/06-routing-forms-persistence-i18n.md`
-- Testing/tooling: `references/07-testing-tooling.md`
-- Anti-patterns: `references/08-anti-patterns.md`
-- Review checklist: `references/09-review-checklist.md`
+- `references/01-package-map.md`
+- `references/02-fsd-placement.md`
+- `references/03-effector-modeling.md`
+- `references/04-farfetched-contracts.md`
+- `references/05-react-ui-binding.md`
+- `references/06-routing-forms-persistence-i18n.md`
+- `references/07-testing-tooling.md`
+- `references/08-anti-patterns.md`
+- `references/09-review-checklist.md`
+- `references/10-ecosystem-library-notes.md`
 
-## Final answer checklist
+## Default answer style
 
-Before answering, check:
+Be specific. Prefer concrete placement and code examples.
 
-- Did I keep business logic out of UI?
-- Did I keep imports downward by FSD layers?
-- Did I avoid deep imports across slice boundaries?
-- Did I choose packages by purpose?
-- Did I validate remote data?
-- Did I avoid `watch`, `getState`, runtime units, and imperative effects?
-- Did I place orchestration at the right layer, usually page/model or app/model?
-- Did I explain what is wrong and how to fix it?
+When correcting code, show the minimal correct version first, then explain.
+
+When a choice is trade-off based, say what the default should be and when to deviate.

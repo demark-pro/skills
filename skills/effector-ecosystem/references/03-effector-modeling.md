@@ -1,185 +1,226 @@
 # Effector modeling rules
 
+Use this file when designing or reviewing Effector models.
+
 ## Contents
 
-- [Static initialization](#static-initialization)
-- [sample is the main glue](#sample-is-the-main-glue)
-- [Events describe facts](#events-describe-facts)
-- [Stores are atomic](#stores-are-atomic)
-- [View models](#view-models)
-- [Effects](#effects)
-- [watch](#watch)
-- [effector-action](#effector-action)
-- [File organization](#file-organization)
+- Static initialization
+- Unit choice
+- Data flow with `sample`
+- Store rules
+- Effects
+- `attach`
+- `scopeBind`
+- Branching
+- Patronum
+- Factories
+- File organization inside a slice
+- Testing model behavior
 
 ## Static initialization
 
-Create all units at module level:
+Create units at module top level only.
 
 ```ts
-export const submitted = createEvent<FormValues>();
-export const $values = createStore<FormValues>(initialValues);
+export const submitted = createEvent();
+export const $value = createStore('');
 ```
 
-Never create units inside:
+Do not create events, stores, effects, queries, mutations, routes, or factories in React render or hooks.
 
-- React components
-- event handlers
-- effects
-- condition branches
-- callbacks
-- loops at runtime
+## Unit choice
 
-## `sample` is the main glue
+Use:
 
-Use `sample` to connect events, stores, effects, queries, and mutations.
+- event for a fact that happened: `formSubmitted`, `pageOpened`, `searchChanged`
+- store for state: `$query`, `$isValid`, `$selectedUserId`
+- effect for side effects that are not Farfetched remote operations: analytics, non-HTTP adapters, imperative SDK calls
+- query/mutation for backend communication
+- derived store for computed state
+
+Use names that describe the domain fact, not the setter implementation.
+
+```ts
+// good
+export const emailChanged = createEvent<string>();
+export const formSubmitted = createEvent();
+
+// bad
+export const setEmail = createEvent<string>();
+export const click = createEvent();
+```
+
+## Data flow with `sample`
+
+Use `sample` as the default way to connect units.
 
 ```ts
 sample({
   clock: formSubmitted,
   source: $values,
-  target: updateProfileMutation.start,
+  filter: $isValid,
+  target: submitMutation.start,
 });
 ```
 
-Use `source` instead of `$store.getState()`.
+Rules:
 
-## Events describe facts
+- `clock` answers “when”
+- `source` answers “with which current data”
+- `filter` answers “should it continue”
+- `fn` maps data and must be pure
+- `target` is the next fact/operation
 
-Good event names:
+Prefer `sample` over `$store.getState()`, `watch`, and imperative event calls.
 
-```ts
-pageOpened
-formSubmitted
-emailChanged
-profileUpdated
-modalClosed
-```
+Avoid legacy `forward`/`guard` in new code; `sample` covers the same architectural role with a clearer shape.
 
-Bad event names:
+## Store rules
 
-```ts
-setData
-handleClick
-doStuff
-run
-```
-
-Events should represent something that happened, not a command implementation detail.
-
-## Stores are atomic
-
-Prefer:
+Prefer atomic stores when fields change independently:
 
 ```ts
+export const $name = createStore('');
 export const $email = createStore('');
-export const $password = createStore('');
-export const $isDirty = combine($email, $password, ...);
 ```
 
-Avoid one giant store when pieces change independently:
-
-```ts
-export const $pageState = createStore({
-  email: '',
-  password: '',
-  filters: {},
-  pagination: {},
-  modal: {},
-});
-```
-
-Use object stores when the object is truly indivisible.
-
-## View models
-
-Collect UI-ready data with `combine`:
+Use `combine` for view models:
 
 ```ts
 export const $vm = combine({
-  values: $values,
-  errors: $errors,
-  pending: updateProfileMutation.$pending,
-  disabled: $isSubmitDisabled,
+  name: $name,
+  email: $email,
+  canSubmit: $canSubmit,
 });
 ```
 
-Expose `$vm` or separate stores depending on what gives better rendering granularity.
+Derived stores are read-only in architecture. Do not use derived stores as `target` or attach `.on`/`.reset` to them after derivation.
+
+Effector treats `undefined` specially in stores. Do not return `undefined` from reducers unless `skipVoid: false` is intentional and documented.
 
 ## Effects
 
-Use effects for side effects that are not better represented by Farfetched:
-
-- analytics
-- logging
-- browser APIs
-- file download
-- clipboard
-- imperative adapter calls
-
-Do not put business orchestration inside effects.
-
-Bad:
+Use `createEffect` for non-HTTP side effects:
 
 ```ts
-const saveFx = createEffect(async () => {
-  const values = $values.getState();
-  await api.save(values);
-  saved();
-  navigateFx('/profile');
+export const analyticsTrackedFx = createEffect<AnalyticsPayload, void>(async (payload) => {
+  analytics.track(payload);
 });
 ```
 
-Good:
+For HTTP, prefer Farfetched.
+
+Do not orchestrate a workflow by calling events/effects inside an effect body:
 
 ```ts
-sample({
-  clock: formSubmitted,
-  source: $values,
-  target: saveMutation.start,
-});
-
-sample({
-  clock: saveMutation.finished.success,
-  target: profileRoute.open,
+// bad
+const saveAndReloadFx = createEffect(async (values) => {
+  await saveFx(values);
+  reloadRequested();
 });
 ```
 
-## `watch`
+Use `sample` connections instead.
 
-Use `watch` only for debugging, logging during development, or bridging to an external imperative system when there is no better adapter.
+## `attach`
 
-Do not use `watch` for business logic.
+Use `attach` when an effect needs values from stores or parameter preprocessing.
 
-## `effector-action`
-
-Use when a single synchronous action becomes unreadable with many `sample` calls.
-
-Prefer ordinary `sample` for normal flows.
-
-## File organization
-
-For small slices:
-
-```txt
-model/model.ts
+```ts
+const requestWithTokenFx = attach({
+  source: $token,
+  effect: requestFx,
+  mapParams: (params: RequestParams, token) => ({ ...params, token }),
+});
 ```
 
-For medium/large slices, split by behavior:
+This avoids `getState()` and keeps dependencies explicit.
+
+## `scopeBind`
+
+Use `scopeBind` for callbacks that leave Effector's synchronous call stack and still need to target the current Scope:
+
+- DOM/event emitter callbacks registered outside React
+- WebSocket callbacks
+- SDK callbacks
+- timers created inside scoped initialization
+
+Do not use `scopeBind` as a replacement for `useUnit` in React components.
+
+## Branching
+
+For simple branching, use `sample` with `filter` or `split`.
+
+For complex multi-branch flows, use `effector-action` when it improves readability and still keeps targets explicit.
+
+Do not put business branching in JSX.
+
+## Patronum
+
+Use Patronum for common patterns instead of custom `watch` or timer logic:
+
+- debounce/throttle search
+- `reset` many stores by clock
+- `status`/`pending` helpers
+- `condition`
+- `spread`/`reshape`
+- `combineEvents`
+
+## Factories
+
+Use factories only for repeated independent model instances.
+
+Rules:
+
+- define factory in `model/create-*.model.ts`
+- invoke at module top level
+- export the instance through slice public API
+- configure Effector Babel/SWC plugin for local factories when SSR/SIDs matter
+- do not invoke factories in React components
+
+## File organization inside a slice
+
+Small slice:
 
 ```txt
-model/form.model.ts
-model/validation.model.ts
-model/routing.model.ts
-model/permissions.model.ts
+model.ts
+index.ts
 ```
 
-Avoid splitting by unit type:
+Medium slice:
 
 ```txt
-model/events.ts
+model/
+  form.model.ts
+  query.model.ts
+  contract.ts
+api/
+  update-profile.mutation.ts
+ui/
+  profile-update-form.tsx
+index.ts
+```
+
+Large slice: split by feature/domain concern, not by “stores/events/effects” folders.
+
+Avoid:
+
+```txt
 model/stores.ts
+model/events.ts
 model/effects.ts
 ```
 
-That structure makes related behavior harder to read.
+Prefer:
+
+```txt
+model/form.model.ts
+model/permissions.model.ts
+model/lifecycle.model.ts
+```
+
+## Testing model behavior
+
+Use `fork` and `allSettled`.
+
+Do not render React just to test data flow that can be tested at model level.

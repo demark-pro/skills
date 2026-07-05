@@ -14,7 +14,9 @@ export const resourceQuery = createJsonQuery({
   },
   response: {
     contract: ResourceContract,
+    mapError: ({ error }) => error,
   },
 });
 
+// Use the operator; do not put concurrency into createJsonQuery config.
 concurrency(resourceQuery, { strategy: 'TAKE_LATEST' });

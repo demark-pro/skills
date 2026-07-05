@@ -28,3 +28,24 @@ Use page model for orchestration:
 export { Page } from './ui/page';
 export { pageRoute } from './route';
 ```
+
+## Page model shape
+
+Expose a shape for `useUnit`:
+
+```ts
+export const $$page = {
+  data: pageQuery.$data,
+  pending: pageQuery.$pending,
+  opened: pageRoute.opened,
+  retryClicked: pageQuery.refresh,
+};
+```
+
+## Page UI rule
+
+```tsx
+const { data, pending, retryClicked } = useUnit($$page);
+```
+
+Do not start queries in `useEffect` when route/app events already express the lifecycle.

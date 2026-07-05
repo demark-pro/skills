@@ -1,4 +1,4 @@
-import { createJsonMutation, declareParams } from '@farfetched/core';
+import { createJsonMutation, declareParams, concurrency } from '@farfetched/core';
 import { apiUrl } from '@/shared/api/base-url';
 import { ResourceContract } from '../model/resource.contract';
 
@@ -18,5 +18,9 @@ export const updateResourceMutation = createJsonMutation({
   },
   response: {
     contract: ResourceContract,
+    mapError: ({ error }) => error,
   },
 });
+
+// Prevent accidental duplicate submits while one mutation is already running.
+concurrency(updateResourceMutation, { strategy: 'TAKE_FIRST' });

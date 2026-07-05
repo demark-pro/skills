@@ -2,10 +2,11 @@
 
 ## Contents
 
-- [FSD anti-patterns](#fsd-anti-patterns)
-- [Effector anti-patterns](#effector-anti-patterns)
-- [Farfetched anti-patterns](#farfetched-anti-patterns)
-- [React anti-patterns](#react-anti-patterns)
+- FSD anti-patterns
+- Effector anti-patterns
+- Farfetched anti-patterns
+- React anti-patterns
+- Persistence anti-patterns
 
 ## FSD anti-patterns
 
@@ -23,7 +24,7 @@ Use public API:
 import { $user } from '@/entities/user';
 ```
 
-### Business code in shared
+### Business code in `shared`
 
 ```txt
 shared/types/user.ts      # bad
@@ -33,7 +34,7 @@ shared/ui/user-avatar.tsx # bad
 
 Move to `entities/user`.
 
-### Too many features
+### Too many technical features
 
 Bad:
 
@@ -81,7 +82,7 @@ const submitFx = createEffect(() => {
 });
 ```
 
-Use `sample({ source: $values, clock: submitted })`.
+Use `sample({ source: $values, clock: submitted })` or `attach`.
 
 ### Imperative effect orchestration
 
@@ -95,12 +96,37 @@ const flowFx = createEffect(async () => {
 
 Use events and `sample`.
 
+### Derived store as target
+
+```ts
+const $fullName = combine($firstName, $lastName, (first, last) => `${first} ${last}`);
+
+sample({
+  clock: resetClicked,
+  fn: () => '',
+  target: $fullName, // bad
+});
+```
+
+Target writable stores/events/effects, not derived stores.
+
+### Returning `undefined` accidentally
+
+```ts
+$value.on(changed, (_, value) => {
+  if (!value) return undefined; // bad unless skipVoid:false is deliberate
+  return value;
+});
+```
+
+Return previous state or model absence explicitly as `null`/union.
+
 ## Farfetched anti-patterns
 
 ### Fetch effects for HTTP endpoints
 
 ```ts
-const loadUserFx = createEffect(() => fetch('/user').then(r => r.json()));
+const loadUserFx = createEffect(() => fetch('/user').then((r) => r.json()));
 ```
 
 Prefer `createJsonQuery` with a contract.
@@ -108,16 +134,66 @@ Prefer `createJsonQuery` with a contract.
 ### Type assertion instead of contract
 
 ```ts
-mapData: ({ result }) => result as User
+mapData: ({ result }) => result as User;
 ```
 
 Validate runtime data.
+
+### Concurrency in obsolete config shape
+
+```ts
+// bad for current Farfetched style
+createJsonQuery({
+  // ...
+  concurrency: { strategy: 'TAKE_LATEST' },
+});
+```
+
+Use the operator:
+
+```ts
+concurrency(query, { strategy: 'TAKE_LATEST' });
+```
 
 ### Blind optimistic update
 
 Do not patch cached lists if backend sorting/filtering/permissions can change visibility.
 
+### Query/mutation created in component
+
+Create remote operations statically in slice API/model files.
+
 ## React anti-patterns
+
+### Many `useUnit` calls from the same model
+
+```tsx
+// bad by default
+const value = useUnit($value);
+const error = useUnit($error);
+const changed = useUnit(changedEvent);
+const submitted = useUnit(submittedEvent);
+```
+
+Prefer one shape:
+
+```tsx
+const { value, error, changed, submitted } = useUnit($$form);
+```
+
+### Raw event/effect call from component
+
+```tsx
+// bad in Scope-aware apps
+<button onClick={() => submittedEvent()}>Save</button>
+```
+
+Bind with `useUnit`:
+
+```tsx
+const { submitted } = useUnit({ submitted: submittedEvent });
+<button onClick={() => submitted()}>Save</button>
+```
 
 ### API call in component
 
@@ -138,3 +214,25 @@ if (user.role === 'admin' && invoice.status === 'draft') {
 ```
 
 Move to model or domain lib.
+
+### Translated strings in domain stores
+
+```ts
+export const $statusText = createStore('User is blocked'); // bad for domain model
+```
+
+Store domain state and translate in UI/presentation.
+
+## Persistence anti-patterns
+
+### Persisting unvalidated external values
+
+```ts
+persist({ store: $theme, key: 'theme' }); // incomplete in Scope/external-data-sensitive apps
+```
+
+Use `contract` and explicit `pickup` when scopes are used.
+
+### Persisting secrets by default
+
+Do not store tokens in localStorage/sessionStorage unless the security model explicitly accepts the risk.
