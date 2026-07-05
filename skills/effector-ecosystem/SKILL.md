@@ -1,6 +1,7 @@
 ---
 name: effector-ecosystem
 description: "Use when designing, reviewing, generating, or refactoring React frontend applications built with Feature-Sliced Design, effector, effector-react, Farfetched, contracts, patronum, atomic-router, effector-storage, forms, i18n, testing, and related tooling. Explains where code belongs, which packages to use, and which Effector/FSD anti-patterns to avoid."
+license: MIT
 ---
 
 # Effector Ecosystem Skill
