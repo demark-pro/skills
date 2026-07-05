@@ -69,9 +69,9 @@ export const $$login = {
   password: $password,
   submitDisabled: $submitDisabled,
   pending: loginMutation.$pending,
-  emailChanged,
-  passwordChanged,
-  formSubmitted,
+  onEmailChange: emailChanged,
+  onPasswordChange: passwordChanged,
+  onSubmit: formSubmitted,
 };
 ```
 
@@ -83,9 +83,9 @@ const {
   password,
   submitDisabled,
   pending,
-  emailChanged,
-  passwordChanged,
-  formSubmitted,
+  onEmailChange,
+  onPasswordChange,
+  onSubmit,
 } = useUnit($$login);
 ```
 

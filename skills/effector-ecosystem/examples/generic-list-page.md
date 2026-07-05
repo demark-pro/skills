@@ -61,9 +61,9 @@ export const $$itemsPage = {
   pending: itemsQuery.$pending,
   search: $search,
   page: $page,
-  searchChanged,
-  pageChanged,
-  retryClicked: itemsQuery.refresh,
+  onSearchChange: searchChanged,
+  onPageChange: pageChanged,
+  onRetryClick: itemsQuery.refresh,
 };
 ```
 
@@ -75,9 +75,9 @@ const {
   pending,
   search,
   page,
-  searchChanged,
-  pageChanged,
-  retryClicked,
+  onSearchChange,
+  onPageChange,
+  onRetryClick,
 } = useUnit($$itemsPage);
 ```
 

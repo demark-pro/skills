@@ -50,6 +50,7 @@ Do not test all business rules through React if they can be tested at model leve
 When Scope is used:
 
 - events/effects passed to React handlers must be bound through `useUnit`
+- handler-like values returned from `useUnit` should use React-facing `on*` aliases
 - persistence should use explicit `pickup`
 - stores that are serialized must have stable SIDs
 - app bootstrap should use `fork`, `serialize`, and hydration consistently

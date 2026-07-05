@@ -36,7 +36,7 @@ Use `useUnit` as the default React binding.
 Default connected-component pattern:
 
 ```tsx
-const { value, pending, changed, submitted } = useUnit($$model);
+const { value, pending, onChange, onSubmit } = useUnit($$model);
 ```
 
 The model should expose an object shape suitable for UI binding:
@@ -45,12 +45,12 @@ The model should expose an object shape suitable for UI binding:
 export const $$model = {
   value: $value,
   pending: mutation.$pending,
-  changed,
-  submitted,
+  onChange: changed,
+  onSubmit: submitted,
 };
 ```
 
-Use arrays for small local bindings, object shapes for public model APIs.
+Use arrays for small local bindings, object shapes for public model APIs. In both cases, name bound handlers with `on*` aliases in React-facing code.
 
 ## @effector/next
 

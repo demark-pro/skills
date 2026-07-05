@@ -7,28 +7,28 @@ export function ConnectedForm() {
     email,
     errors,
     submitDisabled,
-    nameChanged,
-    emailChanged,
-    formSubmitted,
+    onNameChange,
+    onEmailChange,
+    onSubmit,
   } = useUnit($$form);
 
   return (
     <form
       onSubmit={(event) => {
         event.preventDefault();
-        formSubmitted();
+        onSubmit();
       }}
     >
       <input
         value={name}
         aria-invalid={Boolean(errors.name)}
-        onChange={(event) => nameChanged(event.currentTarget.value)}
+        onChange={(event) => onNameChange(event.currentTarget.value)}
       />
 
       <input
         value={email}
         aria-invalid={Boolean(errors.email)}
-        onChange={(event) => emailChanged(event.currentTarget.value)}
+        onChange={(event) => onEmailChange(event.currentTarget.value)}
       />
 
       <button type="submit" disabled={submitDisabled}>

@@ -23,11 +23,11 @@ export const $vm = combine({
   submitDisabled: $submitDisabled,
 });
 
-// Public UI binding shape: use as `const { value, submitted } = useUnit($$model)`.
+// Public UI binding shape: use as `const { value, onSubmit } = useUnit($$model)`.
 export const $$model = {
   value: $value,
   canSubmit: $canSubmit,
   submitDisabled: $submitDisabled,
-  valueChanged,
-  submitted,
+  onValueChange: valueChanged,
+  onSubmit: submitted,
 };

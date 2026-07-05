@@ -84,13 +84,13 @@ React components must not:
 For every component that reads/calls several Effector units from the same model, prefer a single `useUnit` call with an object or array shape:
 
 ```tsx
-const { value, submitDisabled, valueChanged, submitted } = useUnit($$form);
+const { value, submitDisabled, onValueChange, onSubmit } = useUnit($$form);
 ```
 
 or:
 
 ```tsx
-const [value, submitDisabled, valueChanged, submitted] = useUnit([
+const [value, submitDisabled, onValueChange, onSubmit] = useUnit([
   $value,
   $submitDisabled,
   valueChanged,
@@ -98,7 +98,7 @@ const [value, submitDisabled, valueChanged, submitted] = useUnit([
 ]);
 ```
 
-Then destructure every returned value and pass the bound callbacks to JSX.
+Then destructure every returned value and pass the bound callbacks to JSX. Name handler-like values returned from `useUnit` with React-style `on*` aliases: expose `onSubmit: submitted`, `onValueChange: valueChanged`, `onRetryClick: retryClicked`. Keep Effector events named as facts in models; alias them only for React binding.
 
 Avoid repeated bindings in the same component:
 
@@ -106,7 +106,7 @@ Avoid repeated bindings in the same component:
 // bad by default: noisy and easier to desync during refactoring
 const value = useUnit($value);
 const submitDisabled = useUnit($submitDisabled);
-const valueChanged = useUnit(valueChangedEvent);
+const onValueChange = useUnit(valueChangedEvent);
 ```
 
 Split the component when subscription granularity matters instead of scattering many `useUnit` calls in one component.
@@ -258,6 +258,16 @@ Events:
 export const formSubmitted = createEvent<FormValues>();
 export const searchChanged = createEvent<string>();
 export const pageOpened = createEvent();
+```
+
+`useUnit` UI binding shapes should expose these events as handler aliases:
+
+```ts
+export const $$form = {
+  value: $value,
+  onValueChange: valueChanged,
+  onSubmit: formSubmitted,
+};
 ```
 
 Effects:

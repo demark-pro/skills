@@ -47,6 +47,7 @@ Use this checklist when reviewing code.
 - Does connected UI use `useUnit`?
 - Is there one `useUnit` object/array shape per connected component by default?
 - Are all returned values destructured and used intentionally?
+- Do handler-like values returned from `useUnit` use `on*` aliases, such as `onSubmit`, instead of event fact names such as `submitted`?
 - Are raw events/effects not passed to DOM handlers or ordinary callback props?
 - Is component splitting used when subscription granularity matters?
 - Does UI only render and send events?

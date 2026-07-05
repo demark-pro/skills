@@ -50,6 +50,16 @@ export const setEmail = createEvent<string>();
 export const click = createEvent();
 ```
 
+When exposing events to React through a `useUnit` shape, keep these fact names in the model and alias them as handlers for UI:
+
+```ts
+export const $$form = {
+  email: $email,
+  onEmailChange: emailChanged,
+  onSubmit: formSubmitted,
+};
+```
+
 ## Data flow with `sample`
 
 Use `sample` as the default way to connect units.

@@ -171,14 +171,14 @@ Create remote operations statically in slice API/model files.
 // bad by default
 const value = useUnit($value);
 const error = useUnit($error);
-const changed = useUnit(changedEvent);
-const submitted = useUnit(submittedEvent);
+const onChange = useUnit(changedEvent);
+const onSubmit = useUnit(submittedEvent);
 ```
 
 Prefer one shape:
 
 ```tsx
-const { value, error, changed, submitted } = useUnit($$form);
+const { value, error, onChange, onSubmit } = useUnit($$form);
 ```
 
 ### Raw event/effect call from component
@@ -191,8 +191,8 @@ const { value, error, changed, submitted } = useUnit($$form);
 Bind with `useUnit`:
 
 ```tsx
-const { submitted } = useUnit({ submitted: submittedEvent });
-<button onClick={() => submitted()}>Save</button>
+const { onSubmit } = useUnit({ onSubmit: submittedEvent });
+<button onClick={() => onSubmit()}>Save</button>
 ```
 
 ### API call in component

@@ -14,6 +14,7 @@ Use this file when writing or reviewing React components.
 - Forms
 - Effector units in render
 - Event handlers
+- Handler alias names
 
 ## Connected vs dumb components
 
@@ -47,18 +48,18 @@ export function ProfileUpdateForm() {
     email,
     errors,
     submitDisabled,
-    nameChanged,
-    emailChanged,
-    submitted,
+    onNameChange,
+    onEmailChange,
+    onSubmit,
   } = useUnit($$profileUpdate);
 
   return (
     <form onSubmit={(event) => {
       event.preventDefault();
-      submitted();
+      onSubmit();
     }}>
-      <input value={name} onChange={(event) => nameChanged(event.currentTarget.value)} />
-      <input value={email} onChange={(event) => emailChanged(event.currentTarget.value)} />
+      <input value={name} onChange={(event) => onNameChange(event.currentTarget.value)} />
+      <input value={email} onChange={(event) => onEmailChange(event.currentTarget.value)} />
       <button disabled={submitDisabled}>Save</button>
     </form>
   );
@@ -73,16 +74,16 @@ export const $$profileUpdate = {
   email: $email,
   errors: $errors,
   submitDisabled: $submitDisabled,
-  nameChanged,
-  emailChanged,
-  submitted,
+  onNameChange: nameChanged,
+  onEmailChange: emailChanged,
+  onSubmit: submitted,
 };
 ```
 
 ### Array shape: useful for local small bindings
 
 ```tsx
-const [value, submitDisabled, valueChanged, submitted] = useUnit([
+const [value, submitDisabled, onValueChange, onSubmit] = useUnit([
   $value,
   $submitDisabled,
   valueChanged,
@@ -100,8 +101,8 @@ Avoid many separate `useUnit` calls in one component:
 // bad by default
 const value = useUnit($value);
 const submitDisabled = useUnit($submitDisabled);
-const valueChanged = useUnit(valueChangedEvent);
-const submitted = useUnit(submittedEvent);
+const onValueChange = useUnit(valueChangedEvent);
+const onSubmit = useUnit(submittedEvent);
 ```
 
 This is harder to review, easier to partially refactor incorrectly, and increases the chance of unused subscriptions. Split the component when different parts need independent subscriptions.
@@ -116,8 +117,8 @@ Avoid passing raw events/effects to DOM handlers:
 Use the bound function returned by `useUnit`:
 
 ```tsx
-const { submitted } = useUnit({ submitted: submittedEvent });
-<button onClick={() => submitted()}>Save</button>
+const { onSubmit } = useUnit({ onSubmit: submittedEvent });
+<button onClick={() => onSubmit()}>Save</button>
 ```
 
 ## Scope and SSR
@@ -200,18 +201,33 @@ Create models statically and import them.
 Good:
 
 ```tsx
-const { searchChanged } = useUnit({ searchChanged });
-<input onChange={(event) => searchChanged(event.currentTarget.value)} />
+const { onSearchChange } = useUnit({ onSearchChange: searchChanged });
+<input onChange={(event) => onSearchChange(event.currentTarget.value)} />
 ```
 
 Good for submit:
 
 ```tsx
-const { submitted } = useUnit({ submitted });
+const { onSubmit } = useUnit({ onSubmit: submitted });
 <form onSubmit={(event) => {
   event.preventDefault();
-  submitted();
+  onSubmit();
 }} />
 ```
 
 Avoid putting business logic in handlers.
+
+## Handler alias names
+
+Events in Effector models should keep fact names such as `submitted`, `formSubmitted`, or `searchChanged`.
+
+Handler-like values returned by `useUnit` should use React-style `on*` aliases:
+
+```ts
+const { onSubmit, onSearchChange } = useUnit({
+  onSubmit: submitted,
+  onSearchChange: searchChanged,
+});
+```
+
+Public `$$model` shapes should expose the same aliases, so JSX never destructures event fact names as callbacks.

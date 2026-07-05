@@ -37,15 +37,14 @@ Expose a shape for `useUnit`:
 export const $$page = {
   data: pageQuery.$data,
   pending: pageQuery.$pending,
-  opened: pageRoute.opened,
-  retryClicked: pageQuery.refresh,
+  onRetryClick: pageQuery.refresh,
 };
 ```
 
 ## Page UI rule
 
 ```tsx
-const { data, pending, retryClicked } = useUnit($$page);
+const { data, pending, onRetryClick } = useUnit($$page);
 ```
 
 Do not start queries in `useEffect` when route/app events already express the lifecycle.

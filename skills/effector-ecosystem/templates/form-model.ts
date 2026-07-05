@@ -41,7 +41,7 @@ sample({
   // target: mutation.start,
 });
 
-// Public UI binding shape: use as `const { name, nameChanged } = useUnit($$form)`.
+// Public UI binding shape: use as `const { name, onNameChange, onSubmit } = useUnit($$form)`.
 export const $$form = {
   name: $name,
   email: $email,
@@ -49,8 +49,8 @@ export const $$form = {
   errors: $errors,
   isValid: $isValid,
   submitDisabled: $submitDisabled,
-  nameChanged,
-  emailChanged,
-  formSubmitted,
-  formReset,
+  onNameChange: nameChanged,
+  onEmailChange: emailChanged,
+  onSubmit: formSubmitted,
+  onReset: formReset,
 };

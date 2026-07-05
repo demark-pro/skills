@@ -49,10 +49,10 @@ Use for:
 Default connected-component rule:
 
 ```tsx
-const { value, valueChanged, submitted } = useUnit($$model);
+const { value, onValueChange, onSubmit } = useUnit($$model);
 ```
 
-Use one `useUnit` call with an object or array shape for units from the same model. Destructure all returned fields. Split a component if render granularity matters.
+Use one `useUnit` call with an object or array shape for units from the same model. Destructure all returned fields. Handler-like values returned from `useUnit` should use React-style `on*` aliases. Split a component if render granularity matters.
 
 Avoid deprecated or legacy bindings (`useStore`, `useEvent`, HOCs) in new code unless maintaining old code.
 
