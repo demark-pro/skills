@@ -228,3 +228,12 @@ At minimum, CI should run:
 - build with the same plugin configuration used in production
 - SSR/Next build smoke test when Next.js is used
 - architecture review checklist for Farfetched contracts/barriers/routes on changed ownership areas
+
+## Audit additions for tests
+
+- Avoid global `fx.use(...)` in shared test helpers when the project uses `fork({ handlers })`; global handlers hide missing scoped handlers and reduce test isolation.
+- Add tests for cold start on protected routes: valid session + direct URL should keep the original route and params after session restore.
+- Add tests for logout/session clear while a protected route is already opened: route should redirect/close, not render a blank layout.
+- Add tests for any app-level unauthorized policy: a `401` from a non-session query/mutation should clear session and trigger the same redirect policy as logout.
+- Add tests for scope-safe timers/listeners: two Scopes can start external callbacks independently; stopping one does not stop the other.
+- Add tests for page-model route gates: mutation success while the route is closed must not start the page query.

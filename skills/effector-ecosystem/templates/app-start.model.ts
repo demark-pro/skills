@@ -28,3 +28,9 @@ sample({ clock: routerStartedFx.doneData, target: initialRouteResolved });
 // Review rule: do not add a free-floating `startRouter(scope)` / `startAppClock(scope)`
 // sequence for ordinary startup. Add router/history/clock installation as effects
 // sampled from `appStarted`; use external helpers only for documented host adapter wiring.
+
+// Audit note for protected-route apps:
+// if the router can open a protected URL before session/storage restore finishes,
+// do not start `routerStartedFx` in parallel with the restore query. Either sample
+// router startup from `sessionRestoreFinished`, or model auth as `unknown` and let
+// protected route chains wait for a known session state.

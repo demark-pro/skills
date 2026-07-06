@@ -508,3 +508,75 @@ Do not redirect to login from a Farfetched barrier. Emit auth/session facts and 
 ### Query/mutation in component
 
 Do not create or configure Farfetched operations in React components.
+
+## Full-audit checks for Farfetched operations
+
+When auditing a project, create an operation table before judging the code:
+
+```txt
+operation | owner | starters | refresh/invalidation clocks | concurrency | abortAll | cache/update | auth error reaction
+```
+
+This table catches problems that single-file review misses.
+
+### Duplicated starts
+
+Flag any query that can be started by more than one route/layout/page event during the same navigation, especially when `TAKE_EVERY` is configured or left as default.
+
+```ts
+sample({ clock: layoutOpened, target: productsQuery.start });
+sample({ clock: productsPageOpened, target: productsQuery.start });
+```
+
+Fix with a single semantic request event, a pending/cache guard, split operations, or deliberate `TAKE_LATEST`/`TAKE_FIRST` depending on desired semantics.
+
+### `TAKE_EVERY` everywhere is not a decision
+
+`TAKE_EVERY` is valid for independent operations, but if every query/mutation in the codebase sets it explicitly, audit whether it was copy-pasted. For route/search/filter reads, stale responses can win unless the operation is cancelled or deduped. For submit mutations, duplicate-click behavior must be explicit and tested.
+
+### Unauthorized mapping must feed auth lifecycle
+
+A `mapError` returning `{ kind: 'unauthorized' }` is incomplete until an app/session/barrier model consumes it.
+
+```ts
+const failed = merge([
+  userQuery.finished.failure,
+  saveUserMutation.finished.failure,
+]);
+
+sample({
+  clock: failed,
+  filter: ({ error }) => mapRemoteError(error).kind === 'unauthorized',
+  fn: () => undefined,
+  target: sessionCleared,
+});
+```
+
+Keep this cross-operation wiring in `app` or a documented integration owner; do not put routing/session side effects into generic `shared/api` mappers.
+
+### Prefer success payload to query `$data` on success
+
+On `operation.finished.success`, prefer the event payload:
+
+```ts
+sample({
+  clock: referenceQuery.finished.success,
+  fn: ({ result }) => result.items,
+  target: itemsReceived,
+});
+```
+
+Avoid reading `referenceQuery.$data` from `source` on that same clock unless you intentionally need previous cached data.
+
+### Route/page lifecycle cancellation
+
+For page-owned route loaders and quick route param changes, consider cancellation:
+
+```ts
+concurrency(orderQuery, {
+  strategy: 'TAKE_LATEST',
+  abortAll: orderRoute.closed,
+});
+```
+
+If cancellation is not used, document why stale results cannot affect visible state.

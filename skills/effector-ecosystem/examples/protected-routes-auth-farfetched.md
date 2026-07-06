@@ -74,40 +74,83 @@ export { sessionRefreshBarrier } from './api/session-refresh-barrier';
 
 ```ts
 // app/routes/protected.ts
-import { chainRoute, type RouteInstance, type RouteParams, type RouteParamsAndQuery } from 'atomic-router';
-import { createEvent, sample } from 'effector';
-import { $isAuthenticated, currentSessionQuery } from '@/entities/session';
+import {
+  chainRoute,
+  type RouteInstance,
+  type RouteParams,
+  type RouteParamsAndQuery,
+} from 'atomic-router';
+import { createEvent, createStore, merge, sample } from 'effector';
+import { $sessionState, currentSessionQuery } from '@/entities/session';
 
 export function chainAuthenticated<Params extends RouteParams>(route: RouteInstance<Params>) {
   const sessionCheckStarted = createEvent<RouteParamsAndQuery<Params>>();
 
+  const $pendingAttempt = createStore<RouteParamsAndQuery<Params> | null>(null)
+    .on(sessionCheckStarted, (_, attempt) => attempt)
+    .reset(route.closed);
+
   const alreadyAuthenticated = sample({
     clock: sessionCheckStarted,
-    filter: $isAuthenticated,
+    filter: $sessionState.map((state) => state === 'authenticated'),
   });
 
   sample({
     clock: sessionCheckStarted,
-    filter: $isAuthenticated.map((is) => !is),
+    filter: $sessionState.map((state) => state === 'unknown'),
+    fn: () => undefined,
     target: currentSessionQuery.start,
   });
 
-  const authenticatedAfterRefresh = sample({
+  const authenticatedAfterRestore = sample({
     clock: currentSessionQuery.finished.success,
-    source: $isAuthenticated,
-    filter: Boolean,
-    fn: (_, { params }) => params as RouteParamsAndQuery<Params>,
+    source: {
+      attempt: $pendingAttempt,
+      sessionState: $sessionState,
+    },
+    filter: ({ attempt, sessionState }) =>
+      attempt !== null && sessionState === 'authenticated',
+    fn: ({ attempt }) => attempt!,
   });
 
-  return chainRoute({
-    route,
-    beforeOpen: sessionCheckStarted,
-    openOn: [alreadyAuthenticated, authenticatedAfterRefresh],
-    cancelOn: currentSessionQuery.finished.failure,
+  const knownAnonymous = sample({
+    clock: sessionCheckStarted,
+    filter: $sessionState.map((state) => state === 'anonymous'),
   });
+
+  const anonymousAfterRestore = sample({
+    clock: currentSessionQuery.finished.success,
+    source: {
+      attempt: $pendingAttempt,
+      sessionState: $sessionState,
+    },
+    filter: ({ attempt, sessionState }) =>
+      attempt !== null && sessionState === 'anonymous',
+    fn: ({ attempt }) => attempt!,
+  });
+
+  const restoreFailed = sample({
+    clock: currentSessionQuery.finished.failure,
+    source: $pendingAttempt,
+    filter: (attempt) => attempt !== null,
+    fn: (attempt) => attempt!,
+  });
+
+  const rejected = merge([knownAnonymous, anonymousAfterRestore, restoreFailed]);
+
+  $pendingAttempt.reset([alreadyAuthenticated, authenticatedAfterRestore, rejected]);
+
+  return {
+    route: chainRoute({
+      route,
+      beforeOpen: sessionCheckStarted,
+      openOn: [alreadyAuthenticated, authenticatedAfterRestore],
+      cancelOn: rejected,
+    }),
+    rejected,
+  };
 }
 ```
-
 ## Page route
 
 ```ts
@@ -116,24 +159,52 @@ import { createRoute } from 'atomic-router';
 import { chainAuthenticated } from '@/app/routes/protected';
 
 export const dashboardRoute = createRoute();
-export const dashboardAuthenticatedRoute = chainAuthenticated(dashboardRoute);
-```
 
+export const {
+  route: dashboardAuthenticatedRoute,
+  rejected: dashboardAuthRejected,
+} = chainAuthenticated(dashboardRoute);
+```
 ## Redirects
 
 ```ts
 // app/routes/auth-redirects.ts
+import { combine, merge, sample } from 'effector';
 import { redirect } from 'atomic-router';
-import { dashboardRoute } from '@/pages/dashboard/route';
+import { sessionCleared } from '@/entities/session';
+import { dashboardAuthRejected, dashboardRoute } from '@/pages/dashboard/route';
 import { loginRoute } from '@/pages/login/route';
-import { currentSessionQuery } from '@/entities/session';
+
+const protectedRouteRejected = merge([
+  dashboardAuthRejected,
+  // add other protected route rejections here
+]);
 
 redirect({
-  clock: currentSessionQuery.finished.failure,
+  clock: protectedRouteRejected,
   route: loginRoute,
+  replace: true,
+});
+
+const $isProtectedAreaOpened = combine(
+  [dashboardRoute.$isOpened /* add other protected routes */],
+  (opened) => opened.some(Boolean),
+);
+
+const sessionClearedInsideProtectedArea = sample({
+  clock: sessionCleared,
+  source: $isProtectedAreaOpened,
+  filter: Boolean,
+});
+
+redirect({
+  clock: sessionClearedInsideProtectedArea,
+  route: loginRoute,
+  replace: true,
 });
 ```
 
+Redirect on `sessionCleared` is required for logout and expired-session flows while the user is already inside a protected route. A layout that renders `null` for anonymous users is not enough.
 ## Barrier placement
 
 ```ts

@@ -37,13 +37,18 @@ sample({
 });
 
 sample({
-  clock: createItemMutation.finished.success,
-  source: $queryParams,
+  clock: itemCreated,
+  source: {
+    isOpened: itemsRoute.$isOpened,
+    queryParams: $queryParams,
+  },
+  filter: ({ isOpened }) => isOpened,
+  fn: ({ queryParams }) => queryParams,
   target: itemsQuery.start,
 });
 ```
 
-The create feature does not know which page should refetch. The page owns that decision.
+The create feature should expose a semantic fact such as `itemCreated` instead of forcing the page to consume `createItemMutation.finished.success`. The page owns the refetch decision, but because Effector models are static after import, the refetch must be gated by `itemsRoute.$isOpened` or moved to an app/entity invalidation owner.
 
 ## Search/filter concurrency
 
@@ -51,7 +56,7 @@ The create feature does not know which page should refetch. The page owns that d
 concurrency(itemsQuery, { strategy: 'TAKE_LATEST' });
 ```
 
-Use `TAKE_LATEST` for fast-changing search/filter requests. Use `cache` or `keepFresh` only when freshness behavior is intentional.
+Use `TAKE_LATEST` for fast-changing search/filter requests. If both layout and page can start the same query, add a semantic request event with a `$pending`/cache guard or split the operations. Use `cache` or `keepFresh` only when freshness behavior is intentional.
 
 ## Page model UI shape
 

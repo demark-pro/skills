@@ -396,3 +396,116 @@ A parent layout should not assume it can read stores filled by a deeper page Ser
 ### `serialize: 'ignore'` as a lazy fix
 
 Do not silence serialization problems by ignoring stores that must hydrate. Use explicit store design or custom serialization for non-serializable values.
+
+## Production audit anti-patterns
+
+### Router starts before auth restore
+
+```ts
+sample({ clock: appStarted, target: [browserHistoryCreatedFx, sessionQuery.start] });
+```
+
+If the router can open protected routes before the session query resolves, direct reloads may redirect to login/dashboard and lose the original route. Either start router after restore finishes, or model auth as `unknown` and make guards wait.
+
+### Session clear without route policy
+
+```ts
+sample({ clock: loggedOut, target: sessionCleared });
+// no redirect/route close reacts to sessionCleared
+```
+
+A layout that returns `null` for anonymous users is not a route policy. Redirect from app/page routing when a protected route is opened and session is cleared.
+
+### Unauthorized error mapped but not consumed
+
+```ts
+if (response.status === 401) return { kind: 'unauthorized' };
+// no app-level sample reacts to this RemoteError
+```
+
+Normalizing `401` is only half the flow. Auth-sensitive operation failures must feed session/barrier policy and route redirects.
+
+### Page model reacts while route is closed
+
+```ts
+// pages/users/model.ts
+sample({ clock: userUpdated, target: usersQuery.start });
+```
+
+Effector models are static. Once imported, this sample reacts regardless of whether `UsersPage` is rendered. Gate by `usersRoute.$isOpened` or move invalidation to an app/entity owner.
+
+### Duplicate query starts from layout and page
+
+```ts
+sample({ clock: adminLayoutOpened, target: ordersQuery.start });
+sample({ clock: ordersRoute.opened, target: ordersQuery.start });
+concurrency(ordersQuery, { strategy: 'TAKE_EVERY' });
+```
+
+This can make duplicate requests on one navigation. Add a request event with pending/cache guard, split a badge query from a list query, or choose a deliberate concurrency/cancellation policy.
+
+### Scope callback handle stored globally
+
+```ts
+let unsubscribe: (() => void) | null = null;
+
+const startFx = createEffect(() => {
+  const handler = scopeBind(eventFromCallback);
+  unsubscribe = sdk.listen(handler);
+});
+```
+
+The callback may be scope-bound, but the handle is shared across Scopes/tests/HMR instances. Store handles in Effector stores or return them through effect results and stop via scoped lifecycle.
+
+### Declared destroy event is never called
+
+```ts
+export const appDestroyed = createEvent();
+sample({ clock: appDestroyed, target: stopClockFx });
+
+// entrypoint never calls appDestroyed on unmount/HMR
+```
+
+Dead lifecycle events hide leaks. Verify cleanup is wired from entrypoint, route close, or test teardown.
+
+### Throwing inside `sample.fn`
+
+```ts
+sample({
+  clock: formSubmitted,
+  source: $form,
+  fn: (form) => ({ expiresAt: new Date(form.expiresAt).toISOString() }),
+  target: mutation.start,
+});
+```
+
+Validation/parsing that can throw must be modeled before mutation start. Otherwise the feature error flow is bypassed.
+
+### Reading operation `$data` on its own success clock
+
+```ts
+sample({
+  clock: query.finished.success,
+  source: query.$data,
+  fn: (data) => derive(data),
+  target: derivedReceived,
+});
+```
+
+Use `{ result }` from `query.finished.success`. Reading `$data` relies on update ordering and makes the dependency less clear.
+
+### Local async pending around Effector event
+
+```tsx
+await onConfirm(); // onConfirm is an Effector event returned by useUnit and resolves immediately
+```
+
+Do not model mutation progress with local React pending if the real operation is Farfetched/Effector. Move dialog/confirm state to the feature/page model and read mutation `$pending`.
+
+### Huge VM tied to a global ticker
+
+```ts
+const $vm = combine({ list: $list, dialog: $dialog, now: $currentTimestamp }).map(toHugeVm);
+```
+
+A global clock can recompute an entire page VM even when only expiration labels need time. Split VM stores or gate ticks by route open.

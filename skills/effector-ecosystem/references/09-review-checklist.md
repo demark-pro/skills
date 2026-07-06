@@ -101,3 +101,51 @@ Use this checklist when reviewing Effector ecosystem code. Use `effector-fsd` fo
 - `keepFresh` trigger without first query start
 - Farfetched top-level `credentials` in new code
 - shared API barrier that directly opens login routes
+
+## Production audit addendum
+
+Use this addendum for full-project audits. These checks are mandatory even when the local code style looks good.
+
+### Startup/auth/routing graph
+
+- Does router/history installation wait for session restore, or does protected routing explicitly model `unknown` auth state?
+- Can an initial protected route be opened and redirected before current-session restore finishes?
+- Does async protected-route logic preserve original params/query after restore?
+- Does `sessionCleared`, logout success, or current-session failure redirect/close protected routes that are already opened?
+- Are layout-level `return null` auth fallbacks backed by routing model redirects, rather than used as the only auth policy?
+
+### Unauthorized handling graph
+
+- Are `401`/`403` errors only normalized, or do they produce session facts such as `sessionCleared`?
+- Are all auth-sensitive queries/mutations included in an app-level unauthorized/barrier policy?
+- Are auth barriers free of navigation, with redirects owned by app/page routes?
+- Does logout/session clear abort or invalidate auth-sensitive in-flight operations when stale responses matter?
+
+### Remote operation graph
+
+- List every `query.start`, `query.refresh`, mutation `.start`, route loader, `keepFresh`, `cache`, and `update` connection.
+- Can the same query be started by layout and page on the same route open?
+- Is every `TAKE_EVERY` intentional rather than copied as a universal default?
+- Are quickly changing route/filter/search queries using `TAKE_LATEST`, cancellation, cache, or explicit dedupe?
+- Are submit mutations protected by an explicit `$pending` gate or a tested concurrency strategy?
+- Are page-local refetch reactions gated by route `$isOpened`?
+
+### Scope/lifecycle graph
+
+- Are timers/listeners/SDK callbacks installed from scoped effects or explicit app/page lifecycle events?
+- Are external callbacks wrapped in `scopeBind` or a scope-aware adapter?
+- Are resource handles (`intervalId`, unsubscribe functions, sockets) stored per Scope or lifecycle instance, not as unguarded module-level singletons?
+- Is `appDestroyed`/route close/HMR cleanup declared and actually called?
+
+### Reactive correctness graph
+
+- Can `sample.fn`, `combine`, store `.map`, or reducers throw because of date parsing, JSON parsing, URL parsing, missing nested data, or invalid casts?
+- Do validation failures become modeled events/stores before mutation start?
+- When handling `operation.finished.success`, does the model use `clock.result` instead of reading the operation `$data` store unnecessarily?
+- Are large VM stores split when a frequent source such as a global clock would recompute heavy lists?
+
+### React boundary graph
+
+- Does any callback prop expect `Promise` while the caller passes an Effector event/effect-bound callback with different completion semantics?
+- Is local React pending state duplicating Farfetched `$pending`?
+- Are confirm/dialog workflows modeled as feature/page state instead of awaiting an Effector event in the component?

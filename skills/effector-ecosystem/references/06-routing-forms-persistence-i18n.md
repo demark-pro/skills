@@ -109,14 +109,29 @@ export function chainAuthenticated<Params extends RouteParams>(route: RouteInsta
 
   const authenticatedAfterRestore = sample({
     clock: currentSessionQuery.finished.success,
-    source: $pendingAttempt,
-    filter: (attempt) => attempt !== null,
-    fn: (attempt) => attempt!,
+    source: {
+      attempt: $pendingAttempt,
+      sessionState: $sessionState,
+    },
+    filter: ({ attempt, sessionState }) =>
+      attempt !== null && sessionState === 'authenticated',
+    fn: ({ attempt }) => attempt!,
   });
 
   const knownAnonymous = sample({
     clock: sessionCheckStarted,
     filter: $sessionState.map((state) => state === 'anonymous'),
+  });
+
+  const anonymousAfterRestore = sample({
+    clock: currentSessionQuery.finished.success,
+    source: {
+      attempt: $pendingAttempt,
+      sessionState: $sessionState,
+    },
+    filter: ({ attempt, sessionState }) =>
+      attempt !== null && sessionState === 'anonymous',
+    fn: ({ attempt }) => attempt!,
   });
 
   const restoreFailed = sample({
@@ -126,7 +141,7 @@ export function chainAuthenticated<Params extends RouteParams>(route: RouteInsta
     fn: (attempt) => attempt!,
   });
 
-  const rejected = merge([knownAnonymous, restoreFailed]);
+  const rejected = merge([knownAnonymous, anonymousAfterRestore, restoreFailed]);
 
   $pendingAttempt.reset([alreadyAuthenticated, authenticatedAfterRestore, rejected, route.closed]);
 
@@ -366,3 +381,45 @@ sample({ clock: appStarted, target: routerStartedFx });
 sample({ clock: routerStartedFx.doneData, target: initialRouteResolved });
 sample({ clock: initialRouteResolved, target: pageStarted });
 ```
+
+## Audit additions for routing, auth, and forms
+
+### Router start must not race auth restore
+
+When the app has protected routes and current-session restore, check the initial startup order. If `appStarted` starts router/history and session restore in parallel, the router may open the current protected URL against an anonymous default state. Prefer either:
+
+1. restore session first, then install/open router; or
+2. use a three-state auth model (`unknown | authenticated | anonymous`) and make protected routes wait until state is known.
+
+### Redirect on session loss is part of protected routing
+
+Protected routing must handle not only route open, but also session loss while already inside a protected area:
+
+```ts
+const $isProtectedRouteOpened = combine(
+  protectedRoutes.map((route) => route.$isOpened),
+  (opened) => opened.some(Boolean),
+);
+
+const protectedSessionLost = sample({
+  clock: sessionCleared,
+  source: $isProtectedRouteOpened,
+  filter: Boolean,
+});
+
+redirect({ clock: protectedSessionLost, route: loginRoute, replace: true });
+```
+
+Do not rely on protected layouts returning `null` as the only logout/session-expiry behavior.
+
+### Preserve route params through async auth checks
+
+If a guard starts `currentSessionQuery`, keep the original route params/query in a pending-attempt store and emit that attempt on success. Do not reconstruct params from the session-query result.
+
+### Form transformation must not throw
+
+Before a submit mutation, validate user input in stores/events. Do not parse dates, URLs, JSON, or numbers in `sample.fn` in a way that can throw and bypass feature error handling. Use a validation error store and only start the mutation when it is empty.
+
+### Confirmation dialogs should not await Effector events
+
+If a shared dialog accepts `onConfirm: () => Promise<void>`, do not pass an Effector event and expect it to wait for a mutation. Either pass a real effect promise intentionally, or preferably model confirmation state in the feature/page and bind the dialog to `$pending`, `$itemToConfirm`, and confirm/close events.

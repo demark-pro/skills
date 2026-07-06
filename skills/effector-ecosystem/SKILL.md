@@ -58,6 +58,20 @@ If the user gives code, review it against this skill and return:
 - A minimal corrected version
 - Any placement note only as an example, unless `effector-fsd` is also in scope
 
+
+## Full audit mode
+
+When the user asks for a full audit, deep review, architecture audit, or “is everything best practice?”, do not stop at local anti-patterns. Perform a cross-cutting static data-flow audit. Build and inspect these graphs before writing the final answer:
+
+1. **Startup graph:** `main`/entrypoint → `fork`/`Provider` → `appStarted` → storage/session restore → router/history installation → initial route open. Flag router/history startup that can open protected routes before auth state is known.
+2. **Auth lifecycle graph:** login success, session restore success/failure, logout/session clear, token refresh, `401/403` API failures, route redirects, protected-route rejection. Flag any `sessionCleared`/logout/unauthorized path that does not update route state.
+3. **Remote-operation graph:** every Farfetched query/mutation, its starters, refresh/invalidation sources, `concurrency`, `abortAll`, cache/update policy, and `$pending` gates. Flag duplicated starts, unintentional `TAKE_EVERY`, stale-result races, and page models that refetch while their route is closed.
+4. **Scope and external callbacks graph:** timers, history listeners, DOM/browser listeners, SDK callbacks, WebSockets, storage pickup, HMR/unmount cleanup. Flag module-level mutable handles such as `let intervalId`, missing `scopeBind`, and declared `appDestroyed`/stop events that are never called.
+5. **Reactive purity graph:** all `sample.fn`, `combine`, store `.map`, reducers, and contracts. Flag transformations that can throw (`new Date(...).toISOString()`, `JSON.parse`, unsafe property access), long inline algorithms, and success handlers that read operation `$data` instead of the `clock` payload.
+6. **React async boundary graph:** components that pass Effector events to callback props expecting `Promise`, local pending state around Effector events, direct route/API calls, or business branching in JSX.
+
+For each finding, include file/path evidence, severity, why it matters, a minimal fix, and an acceptance criterion. If a problem is not directly visible but follows from Effector static graph semantics, explicitly say it is an inferred risk and show the chain of units that creates it.
+
 ## Non-negotiable principles
 
 ### 1. UI must stay dumb
@@ -272,6 +286,7 @@ Before giving a detailed answer, consult the relevant files:
 - `references/09-review-checklist.md`
 - `references/10-ecosystem-library-notes.md`
 - `references/11-nextjs.md`
+- `references/12-production-audit-playbook.md`
 
 ## Default answer style
 

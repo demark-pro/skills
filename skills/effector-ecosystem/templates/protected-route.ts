@@ -27,14 +27,29 @@ export function chainAuthenticated<Params extends RouteParams>(route: RouteInsta
 
   const authenticatedAfterRestore = sample({
     clock: currentSessionQuery.finished.success,
-    source: $pendingAttempt,
-    filter: (attempt) => attempt !== null,
-    fn: (attempt) => attempt!,
+    source: {
+      attempt: $pendingAttempt,
+      sessionState: $sessionState,
+    },
+    filter: ({ attempt, sessionState }) =>
+      attempt !== null && sessionState === 'authenticated',
+    fn: ({ attempt }) => attempt!,
   });
 
   const knownAnonymous = sample({
     clock: sessionCheckStarted,
     filter: $sessionState.map((state) => state === 'anonymous'),
+  });
+
+  const anonymousAfterRestore = sample({
+    clock: currentSessionQuery.finished.success,
+    source: {
+      attempt: $pendingAttempt,
+      sessionState: $sessionState,
+    },
+    filter: ({ attempt, sessionState }) =>
+      attempt !== null && sessionState === 'anonymous',
+    fn: ({ attempt }) => attempt!,
   });
 
   const restoreFailed = sample({
@@ -44,7 +59,7 @@ export function chainAuthenticated<Params extends RouteParams>(route: RouteInsta
     fn: (attempt) => attempt!,
   });
 
-  const rejected = merge([knownAnonymous, restoreFailed]);
+  const rejected = merge([knownAnonymous, anonymousAfterRestore, restoreFailed]);
 
   $pendingAttempt.reset([alreadyAuthenticated, authenticatedAfterRestore, rejected, route.closed]);
 
