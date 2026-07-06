@@ -1,6 +1,7 @@
 import { createJsonMutation, declareParams, concurrency } from '@farfetched/core';
 import { apiUrl } from '@/shared/api/base-url';
-import { ResourceContract } from '../model/resource.contract';
+import { mapRemoteError } from '@/shared/api/errors';
+import { ResourceContract, mapResourceDto } from '../model/resource.contract';
 
 export type UpdateResourceParams = {
   id: string;
@@ -15,10 +16,12 @@ export const updateResourceMutation = createJsonMutation({
     method: 'PATCH',
     url: ({ id }) => apiUrl(`/resources/${id}`),
     body: ({ values }) => values,
+    // fetch: { credentials: 'include' },
   },
   response: {
     contract: ResourceContract,
-    mapError: ({ error }) => error,
+    mapData: ({ result }) => mapResourceDto(result),
+    mapError: ({ error }) => mapRemoteError(error),
   },
 });
 

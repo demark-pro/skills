@@ -1,6 +1,7 @@
 import { createJsonQuery, declareParams, concurrency } from '@farfetched/core';
 import { apiUrl } from '@/shared/api/base-url';
-import { ResourceContract } from '../model/resource.contract';
+import { mapRemoteError } from '@/shared/api/errors';
+import { ResourceContract, mapResourceDto } from '../model/resource.contract';
 
 export type ResourceQueryParams = {
   id: string;
@@ -11,10 +12,13 @@ export const resourceQuery = createJsonQuery({
   request: {
     method: 'GET',
     url: ({ id }) => apiUrl(`/resources/${id}`),
+    // query: ({ id }) => ({ expand: 'owner' }),
+    // fetch: { credentials: 'include' }, // cookie/session APIs; do not use deprecated top-level credentials
   },
   response: {
     contract: ResourceContract,
-    mapError: ({ error }) => error,
+    mapData: ({ result }) => mapResourceDto(result),
+    mapError: ({ error }) => mapRemoteError(error),
   },
 });
 
