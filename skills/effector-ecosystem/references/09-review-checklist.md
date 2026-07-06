@@ -2,6 +2,16 @@
 
 Use this checklist when reviewing code.
 
+## Contents
+
+- FSD
+- Effector
+- Farfetched/contracts
+- React
+- Routing/forms/persistence/i18n
+- Packages/tooling
+- Red flags
+
 ## FSD
 
 - Does each slice have public API?
