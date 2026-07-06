@@ -86,3 +86,34 @@ Use this checklist when reviewing project structure.
 - Are exceptions documented near config or architecture decision records?
 - Are disabled Steiger rules temporary and justified?
 - Is ESLint also enforcing Effector-specific rules via `eslint-plugin-effector`?
+
+## Full audit addendum for Effector projects
+
+Run these checks in addition to normal FSD import/layer checks.
+
+### Effector static graph ownership
+
+- Do page models listen to feature/entity mutation successes while the page route may be closed?
+- Are such page reactions gated by `route.$isOpened`, or moved to an app/entity invalidation owner?
+- Does `app` own global startup, auth error handling, auth redirects, barrier application, and cross-slice invalidation?
+- Are cross-cutting samples that import many entities/features absent from `features`, `entities`, and `shared`?
+
+### Public API width
+
+- Do features export semantic facts/facades (`itemCreated`, `$$itemCreate`) rather than forcing consumers to listen to raw `mutation.finished.success`?
+- Are raw Farfetched operations exported only when they are the intended stable public contract?
+- Are internal dialog/form stores hidden unless they are part of the stable feature facade?
+- Are wildcard exports reviewed for accidental implementation leaks?
+
+### API/contract ownership
+
+- Are page APIs truly page-specific, or are they reusable domain resources that belong in `entities`?
+- Are page mutations truly page-only, or are they user actions that belong in `features`?
+- Are contracts exported from pages only when they describe page-only data?
+- Are settings/session/user/order/link-like resources owned by entities rather than pages?
+
+### Shared purity and auth adapters
+
+- Does `shared/api` stay generic and avoid importing session/routes/business contracts?
+- If `shared/api` contains auth-header adapter state, is it documented as an adapter and synchronized from an allowed owner?
+- Are redirects after auth errors in `app/routes`, not in shared transport helpers?

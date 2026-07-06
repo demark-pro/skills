@@ -47,6 +47,20 @@ When the user asks a placement question, answer with:
 
 When the question is mostly about exact Effector/Farfetched API syntax, defer to `effector-ecosystem` but keep placement guidance here.
 
+
+## Full audit mode
+
+When the user asks for a full FSD/Effector architecture audit, do not only check import direction and folder names. Also inspect **ownership of cross-cutting Effector flows**:
+
+1. Find all slice public APIs and compare exported surface with actual consumers. Flag feature public APIs that leak raw mutations, internal stores, or implementation events when consumers only need semantic facts such as `profileUpdated` or a `$$feature` facade.
+2. Find page models that listen to feature/entity mutation successes. Because Effector models are static once imported, require a route `$isOpened` gate or move invalidation to an app/entity integration owner.
+3. Find APIs/contracts placed in `pages`. If the operation or contract describes a reusable business resource, move it to an `entity`; if it is a user action, move the mutation to a `feature`; keep only page-only filters/list queries in `pages`.
+4. Find global auth/unauthorized/barrier/invalidation wiring. Cross-slice policy that imports many features/entities belongs in `app`, not inside `shared`, and not scattered through unrelated pages.
+5. Find shared adapters that store domain state indirectly, such as auth headers mirrored from session. Verify `shared` stays transport-only or document an adapter boundary.
+6. Report “no cycles/import violations found” only after also checking whether public APIs are too broad and whether hidden orchestration is placed in the wrong owner.
+
+For each finding, give the target owner (`app`, `page`, `widget`, `feature`, `entity`, `shared`), the dependency reason, and a minimal folder/import example.
+
 ## Non-negotiable FSD rules
 
 ### 1. Dependency direction is downward by layer
@@ -411,6 +425,7 @@ Before giving a detailed answer, consult the relevant files:
 - `references/08-anti-patterns.md`
 - `references/09-migration-playbook.md`
 - `references/10-tooling.md`
+- `references/11-effector-audit-ownership.md`
 
 ## Default answer style
 

@@ -223,3 +223,118 @@ model/submit.model.ts
 model/permissions.model.ts
 model/page.model.ts
 ```
+
+## Effector ownership anti-patterns
+
+### Feature public API leaks raw mutation internals
+
+Bad:
+
+```ts
+// features/comment-create/index.ts
+export { createCommentMutation } from './api/create-comment.mutation';
+```
+
+```ts
+// pages/post/model/page.model.ts
+sample({ clock: createCommentMutation.finished.success, target: postQuery.refresh });
+```
+
+Better:
+
+```ts
+// features/comment-create/index.ts
+export { $$commentCreate, commentCreated } from './model/comment-create.model';
+```
+
+```ts
+sample({
+  clock: commentCreated,
+  source: postRoute.$isOpened,
+  filter: Boolean,
+  target: postQuery.refresh,
+});
+```
+
+Expose user-intent events, `$$feature` facade, and semantic facts. Hide raw mutations unless they are intentionally part of the feature contract.
+
+### Page API owns reusable business resource
+
+Bad:
+
+```txt
+pages/settings/api/settings.ts
+pages/settings/model/settings.contract.ts
+```
+
+Better:
+
+```txt
+entities/app-settings/api/app-settings.query.ts
+entities/app-settings/model/app-settings.contract.ts
+features/app-settings-update/api/update-app-settings.mutation.ts
+pages/settings/model/page.model.ts
+```
+
+Page APIs are for page-specific filters/sorting/pagination or one-off route loaders, not reusable domain resources.
+
+### Page model global reaction without route gate
+
+Bad:
+
+```ts
+// pages/orders/model/page.model.ts
+sample({ clock: orderRetried, target: ordersQuery.start });
+```
+
+Because page modules are usually statically imported by routing/app setup, this reaction can fire while the page is closed.
+
+Better:
+
+```ts
+sample({
+  clock: orderRetried,
+  source: ordersRoute.$isOpened,
+  filter: Boolean,
+  fn: () => undefined,
+  target: ordersQuery.start,
+});
+```
+
+### Global auth/invalidation policy scattered through pages
+
+Bad:
+
+```txt
+pages/orders/model/auth-errors.ts
+pages/users/model/auth-errors.ts
+pages/links/model/auth-errors.ts
+```
+
+Better:
+
+```txt
+app/model/auth-errors.ts       # API failures -> sessionCleared
+app/routes/auth-redirects.ts   # sessionCleared in protected area -> login
+app/model/invalidation.ts      # cross-slice invalidation policy
+```
+
+Cross-cutting policy belongs to `app` because it coordinates many lower-layer slices.
+
+### Shared transport owns session routing
+
+Bad:
+
+```ts
+// shared/api/errors.ts
+import { sessionCleared } from '@/entities/session';
+import { loginRoute } from '@/pages/login';
+```
+
+Better:
+
+```txt
+shared/api/errors.ts           # pure mapper only
+app/model/auth-errors.ts       # map failures to session facts
+app/routes/auth-redirects.ts   # map session facts to navigation
+```

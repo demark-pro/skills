@@ -150,3 +150,67 @@ entities/user/model/user.model.test.ts
 ```
 
 Cross-slice integration tests should use public APIs, like production code.
+
+## Effector-specific public API audit
+
+### Semantic facts over raw operation internals
+
+When reviewing feature public APIs, distinguish between a stable capability API and implementation details.
+
+Prefer exporting:
+
+```ts
+export const profileUpdated = updateProfileMutation.finished.success.map(
+  ({ result }) => result,
+);
+
+export const $$profileUpdate = {
+  form: $form,
+  error: $error,
+  pending: updateProfileMutation.$pending,
+  onFieldChange: fieldChanged,
+  onSubmit: formSubmitted,
+};
+```
+
+Avoid forcing consumers to depend on:
+
+```ts
+updateProfileMutation.finished.success
+$internalFormDirty
+profileUpdateFormCompleted
+```
+
+Raw Farfetched operations may be public when the slice deliberately offers that operation as a stable contract, but a full audit must ask: “Could the consumer use a semantic fact/facade instead?”. If yes, narrow the public API.
+
+### Page consumers should not know feature implementation
+
+Bad:
+
+```ts
+import { createManagerMutation } from '@/features/manager-create';
+
+sample({ clock: createManagerMutation.finished.success, target: usersQuery.start });
+```
+
+Good:
+
+```ts
+import { managerCreated } from '@/features/manager-create';
+
+sample({
+  clock: managerCreated,
+  source: usersRoute.$isOpened,
+  filter: Boolean,
+  fn: () => undefined,
+  target: usersQuery.start,
+});
+```
+
+### Public API width checklist
+
+- Does `index.ts` export only what another owner needs?
+- Are wildcard exports exposing internal model/api files accidentally?
+- Can raw mutations/effects be replaced by semantic facts?
+- Are dialog/form internals wrapped in a `$$feature` facade?
+- Are page contracts/API operations exported only when another allowed owner truly needs them?

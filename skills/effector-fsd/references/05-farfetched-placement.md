@@ -141,3 +141,42 @@ entities/post/api/post.query.ts
 `pages/post/route.ts` owns `chainRoute` because it knows the route. `entities/post` owns `postQuery` if reusable.
 
 Do not start route data loading in React `useEffect` when Atomic Router or page model can express it declaratively.
+
+## Full-audit ownership checks
+
+### Page-local refetch after feature mutation
+
+If a page refreshes after a feature mutation, gate the reaction by the page route or move it to a higher owner.
+
+```ts
+sample({
+  clock: itemCreated,
+  source: itemsRoute.$isOpened,
+  filter: Boolean,
+  fn: () => undefined,
+  target: itemsPageQuery.start,
+});
+```
+
+This belongs in the page only when it coordinates page-specific filters/list state. If many pages/widgets depend on the invalidation, create an entity/app invalidation event.
+
+### App-level unauthorized wiring
+
+`shared/api` may map transport errors to `{ kind: 'unauthorized' }`, but the wiring from operation failures to `sessionCleared` belongs in `app` because it imports many operations and session state.
+
+```txt
+app/model/auth-errors.ts
+app/routes/auth-redirects.ts
+```
+
+Do not scatter the same unauthorized handling across pages, and do not import routes/session into shared transport helpers.
+
+### Reusable resource hidden in page API
+
+A query/mutation/contract under `pages/<page>/api` is a warning sign when:
+
+- another page, widget, app integration, or test imports it;
+- the DTO/contract name is a domain resource (`Settings`, `User`, `Order`, `PublicLink`, `Session`) rather than a page response (`UsersPageResponse`);
+- the operation does not use page-only filters, sort, pagination, or route-only params.
+
+Move reusable reads/contracts to `entities/<entity>` and user-action writes to `features/<action>`.
