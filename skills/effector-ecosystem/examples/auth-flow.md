@@ -90,3 +90,12 @@ const {
 ```
 
 Do not call `loginMutation.start` directly from JSX if the feature has a form event that owns validation and submit flow.
+
+## Protected route extension
+
+For protected route + Farfetched barrier details, use `examples/protected-routes-auth-farfetched.md`. Keep the distinction clear:
+
+- `entities/session` owns current session state.
+- `shared/api/auth-barrier.ts` owns transport/session refresh infrastructure only.
+- `app/routes` or page route files own route protection and redirects.
+- Features such as login/logout own user actions.

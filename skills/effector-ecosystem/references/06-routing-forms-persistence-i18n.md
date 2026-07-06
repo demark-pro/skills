@@ -5,6 +5,8 @@ Use this file for integration topics around Effector models.
 ## Contents
 
 - Routing with Atomic Router
+- Protected routes and auth
+- Farfetched route loaders
 - Forms
 - Persistence with `effector-storage`
 - i18n
@@ -19,6 +21,7 @@ Common placement:
 
 ```txt
 shared/routes/index.ts          # route declarations/paths shared by app
+app/routes/router.ts            # router/history configuration
 pages/profile/route.ts          # page route ownership/re-export if needed
 pages/profile/model/page.model.ts
 ```
@@ -39,11 +42,156 @@ sample({
 });
 ```
 
-Use `chainRoute` when opening a route must wait for data or permissions before a child/loaded route becomes active.
+Rules:
 
-Use Farfetched Atomic Router integration when a Farfetched Query is the route loader.
+- Route declarations may live in `shared/routes` only when they are domain-neutral route contracts/paths.
+- Route-to-data orchestration belongs to page/app models, not React components.
+- Use `chainRoute` when opening a route must wait for data, permission checks, or auth restoration before a child/loaded route becomes active.
+- Use `redirect`/navigation samples from model events; do not call router APIs directly in feature UI.
+- If route params change quickly and start remote operations, set Farfetched concurrency deliberately.
 
-Do not put route open/close orchestration into React components.
+## Protected routes and auth
+
+Protected routes are a model concern. Do not hide auth checks in React route components.
+
+Basic synchronous guard:
+
+```ts
+import { chainRoute, type RouteInstance, type RouteParams, type RouteParamsAndQuery } from 'atomic-router';
+import { createEvent, sample } from 'effector';
+import { $isAuthenticated } from '@/entities/session';
+
+export function chainAuthenticated<Params extends RouteParams>(route: RouteInstance<Params>) {
+  const sessionCheckStarted = createEvent<RouteParamsAndQuery<Params>>();
+
+  const alreadyAuthenticated = sample({
+    clock: sessionCheckStarted,
+    filter: $isAuthenticated,
+  });
+
+  return chainRoute({
+    route,
+    beforeOpen: sessionCheckStarted,
+    openOn: alreadyAuthenticated,
+  });
+}
+```
+
+Async auth restoration needs an explicit pending route attempt so `openOn` can emit the original route params/query after the session query succeeds:
+
+```ts
+import {
+  chainRoute,
+  type RouteInstance,
+  type RouteParams,
+  type RouteParamsAndQuery,
+} from 'atomic-router';
+import { createEvent, createStore, merge, sample } from 'effector';
+import { currentSessionQuery, $sessionState } from '@/entities/session';
+
+export function chainAuthenticated<Params extends RouteParams>(route: RouteInstance<Params>) {
+  const sessionCheckStarted = createEvent<RouteParamsAndQuery<Params>>();
+
+  const $pendingAttempt = createStore<RouteParamsAndQuery<Params> | null>(null)
+    .on(sessionCheckStarted, (_, attempt) => attempt);
+
+  const alreadyAuthenticated = sample({
+    clock: sessionCheckStarted,
+    filter: $sessionState.map((state) => state === 'authenticated'),
+  });
+
+  sample({
+    clock: sessionCheckStarted,
+    filter: $sessionState.map((state) => state === 'unknown'),
+    fn: () => undefined,
+    target: currentSessionQuery.start,
+  });
+
+  const authenticatedAfterRestore = sample({
+    clock: currentSessionQuery.finished.success,
+    source: $pendingAttempt,
+    filter: (attempt) => attempt !== null,
+    fn: (attempt) => attempt!,
+  });
+
+  const knownAnonymous = sample({
+    clock: sessionCheckStarted,
+    filter: $sessionState.map((state) => state === 'anonymous'),
+  });
+
+  const restoreFailed = sample({
+    clock: currentSessionQuery.finished.failure,
+    source: $pendingAttempt,
+    filter: (attempt) => attempt !== null,
+    fn: (attempt) => attempt!,
+  });
+
+  const rejected = merge([knownAnonymous, restoreFailed]);
+
+  $pendingAttempt.reset([alreadyAuthenticated, authenticatedAfterRestore, rejected, route.closed]);
+
+  return chainRoute({
+    route,
+    beforeOpen: sessionCheckStarted,
+    openOn: [alreadyAuthenticated, authenticatedAfterRestore],
+    cancelOn: rejected,
+  });
+}
+```
+
+Redirect anonymous users from app/page routing, not from the shared guard if the guard is supposed to be reusable:
+
+```ts
+sample({
+  clock: protectedRouteRejected,
+  fn: () => ({ params: {}, query: { reason: 'auth' } }),
+  target: loginRoute.navigate,
+});
+```
+
+Keep auth state in `entities/session`. Keep login/logout user actions in `features/session-login` and `features/session-logout`. Keep route protection composition in `app/routes` or page route files depending on how global it is.
+
+## Farfetched route loaders
+
+Use Farfetched Atomic Router integration when a Farfetched Query is the route loader. Treat exact helper types as version-sensitive because Atomic Router/Farfetched integration APIs have changed over time.
+
+```ts
+import { chainRoute, createRoute } from 'atomic-router';
+import { startChain, freshChain, barrierChain } from '@farfetched/atomic-router';
+import { postQuery } from '@/entities/post';
+import { authBarrier } from '@/shared/api/auth-barrier';
+
+export const postRoute = createRoute<{ postId: string }>();
+
+export const postAuthorizedRoute = chainRoute({
+  route: postRoute,
+  ...barrierChain(authBarrier),
+});
+
+export const postLoadedRoute = chainRoute({
+  route: postAuthorizedRoute,
+  ...startChain(postQuery),
+});
+
+export const postFreshRoute = chainRoute({
+  route: postAuthorizedRoute,
+  ...freshChain(postQuery),
+});
+```
+
+Use `startChain` when every route open must request the data. Use `freshChain` when cache/stale policy is already configured and a fresh cached result is acceptable.
+
+When query params do not match route params, map them in the page model:
+
+```ts
+sample({
+  clock: postRoute.opened,
+  fn: ({ params }) => ({ id: params.postId }),
+  target: postQuery.start,
+});
+```
+
+Then use `chainRoute` manually with `openOn`/`cancelOn` if you need the loaded child route to wait for that query. Do not perform this mapping in React.
 
 ## Forms
 
@@ -113,6 +261,8 @@ For Scope/SSR, prefer explicit `pickup` to load the value in the right Scope.
 
 Use `clock` when storage writes should happen only on a specific event.
 
+In Next.js, never persist secrets in browser storage. Prefer HTTP-only cookies for sessions and read them at the server/API boundary.
+
 ## i18n
 
 Use `i18next`/`react-i18next` for ordinary UI translations.
@@ -145,7 +295,7 @@ sample({
 });
 ```
 
-With Farfetched, combine `$language` with query params or use `keepFresh` on language changes.
+With Farfetched, combine `$language` with query params or use `keepFresh` on language changes after the query has been started once.
 
 ## Browser APIs with `@withease/web-api`
 
@@ -172,12 +322,14 @@ export const appDestroyed = createEvent();
 
 Use page visibility or network status as Farfetched `keepFresh` triggers when refetching on focus/reconnect is desired.
 
+For callbacks that fire after adapter installation, bind route/session events with `scopeBind` inside the scoped adapter effect.
+
 ## Application startup
 
 Prefer one explicit app-start event:
 
 ```ts
-export const appStarted = createEvent();
+export const appStarted = createEvent<AppStartParams>();
 ```
 
 Use it to:
@@ -186,5 +338,31 @@ Use it to:
 - pick up persisted state
 - start initial queries
 - initialize i18n
+- attach router/history adapters
+- restore auth/session
 
 Do not hide initialization in random component effects.
+
+Default scoped bootstrap:
+
+```ts
+const scope = fork();
+await allSettled(appStarted, { scope, params: startParams });
+```
+
+Avoid free-floating sequences unless they are documented external adapter installation boundaries:
+
+```ts
+await startAppClock(scope);
+await allSettled(appStarted, { scope });
+await startRouter(scope);
+```
+
+Better model the dependency graph:
+
+```ts
+sample({ clock: appStarted, target: storagePickupStarted });
+sample({ clock: appStarted, target: routerStartedFx });
+sample({ clock: routerStartedFx.doneData, target: initialRouteResolved });
+sample({ clock: initialRouteResolved, target: pageStarted });
+```

@@ -57,9 +57,9 @@ Use for:
 - app entrypoints
 - providers
 - Effector scope setup
-- router setup
+- router setup and Next/Atomic Router adapters
 - global styles
-- app-wide initialization events
+- app-wide initialization events such as `appStarted`/`appDestroyed`
 - app-level persistence pickup
 - global error boundaries
 
@@ -175,6 +175,27 @@ Contracts belong near the owner of the remote data.
 Framework route files may live where the framework requires them (`app/`, `pages/`, `routes/`). Treat them as entry adapters.
 
 They should import FSD pages/widgets/features through public APIs and should not become a place for business logic.
+
+Next.js placement defaults:
+
+```txt
+src/app/layout.tsx                         # framework root + EffectorNext provider
+src/app/<route>/page.tsx                   # server adapter: fork/allSettled/serialize
+src/app/providers/next-router-provider.tsx # client adapter that attaches Next router to model
+src/pages/<page>/index.ts                  # FSD page public API
+src/pages/<page>/model/page.model.ts       # pageStarted, route params, query orchestration
+```
+
+Atomic Router placement defaults:
+
+```txt
+src/shared/routes/index.ts                 # domain-neutral route contracts/paths
+src/app/routes/router.ts                   # router/history wiring
+src/app/routes/protected.ts                # app-level protected route composition if global
+src/pages/<page>/route.ts                  # page-owned route/loaded route re-export
+```
+
+Protected route/auth composition belongs in app/page route models. Reusable session state belongs in `entities/session`; login/logout actions belong in `features`.
 
 ## Segment rule
 
