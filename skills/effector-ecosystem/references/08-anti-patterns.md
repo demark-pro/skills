@@ -121,6 +121,29 @@ $value.on(changed, (_, value) => {
 
 Return previous state or model absence explicitly as `null`/union.
 
+### Oversized all-in-one model
+
+Do not keep several workflows in one large model just because they belong to one page or feature.
+
+Bad signs:
+
+- form state, filters, list loading, selection, dialogs, and bulk actions in one file
+- long chains of unrelated `sample` blocks that require reading the whole file
+- stores/events/effects split into technical buckets instead of responsibility-based models
+
+Split by concern:
+
+```txt
+model/form.model.ts
+model/filters.model.ts
+model/list.model.ts
+model/selection.model.ts
+model/dialog.model.ts
+model/page.model.ts
+```
+
+The top-level model should orchestrate submodels with `sample` and expose a clear public shape. Each submodel should own its local state and rules.
+
 ## Farfetched anti-patterns
 
 ### Fetch effects for HTTP endpoints

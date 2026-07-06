@@ -137,7 +137,10 @@ Avoid:
 - creating models from React components
 - using derived stores as mutation targets
 - returning `undefined` from store reducers unless `skipVoid: false` is intentional
+- oversized models that own several unrelated workflows at once
 - huge object stores when several atomic stores are clearer
+
+Prefer concern-based submodels over large all-in-one models. When a model grows into several workflows, split it into submodels such as `$$form`, `$$filters`, `$$list`, `$$selection`, or `$$dialog`; keep each submodel responsible for its own state and local rules. The top-level model should stay thin and orchestrate interactions between submodels with `sample` and other declarative connections.
 
 Prefer factories over copy-pasted Effector model code for repeated forms, filters, widgets, or other independent instances with the same behavior. In SSR/Scope/SID-sensitive apps, use [`@withease/factories`](https://withease.effector.dev/factories/) and configure the Effector Babel/SWC plugin `factories` field; invoke factories at module top level, never during render.
 

@@ -28,6 +28,8 @@ Use this checklist when reviewing code.
 - Are reducers not accidentally returning `undefined`?
 - Is complex branching readable (`sample`/`split`/`effector-action`)?
 - Are events named as facts?
+- Is large model logic split into responsibility-based submodels?
+- Is the top-level model mostly orchestration between submodels through `sample`/declarative connections?
 - Is repeated same-shaped model code extracted to factories instead of copy-pasted?
 - Are factories invoked only at module top level?
 
@@ -81,6 +83,7 @@ Use this checklist when reviewing code.
 
 - `src/api/users.ts` with business endpoint soup
 - `src/store/index.ts` global model with all domains
+- one slice model owning form, filters, list loading, selection, dialogs, and actions at once
 - `shared/types/*.ts` full of domain types
 - `features/*` named after UI events
 - `watch` triggering effects

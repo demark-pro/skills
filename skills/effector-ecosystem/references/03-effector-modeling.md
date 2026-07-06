@@ -13,6 +13,7 @@ Use this file when designing or reviewing Effector models.
 - `scopeBind`
 - Branching
 - Patronum
+- Submodel composition
 - Factories
 - File organization inside a slice
 - Testing model behavior
@@ -176,6 +177,22 @@ Use Patronum for common patterns instead of custom `watch` or timer logic:
 - `spread`/`reshape`
 - `combineEvents`
 
+## Submodel composition
+
+Prefer concern-based submodels when one model starts owning several workflows. Split by responsibility, not by unit type.
+
+Good submodel boundaries:
+
+- form values, validation, and submit intent
+- filters, sorting, and pagination
+- list data loading and refresh
+- selection and bulk actions
+- dialog/modal lifecycle
+
+Keep submodels focused on their own state, events, derived values, and local rules. Keep the top-level model thin: create or import submodels, expose the public `$$model` shape, and orchestrate cross-submodel interactions with `sample`, `combine`, `reset`, `spread`, or Patronum helpers.
+
+Do not create `stores.ts`, `events.ts`, and `effects.ts` buckets just to split files. That keeps one large mental model and hides responsibility boundaries.
+
 ## Factories
 
 Prefer factories over copy-pasted Effector model code for repeated same-shaped behavior. Use them only when the resulting model instances are independent.
@@ -211,7 +228,7 @@ ui/
 index.ts
 ```
 
-Large slice: split by feature/domain concern, not by “stores/events/effects” folders.
+Large slice: split by feature/domain concern, not by “stores/events/effects” folders. Use a top-level `*.model.ts` only as an orchestration layer over focused submodels.
 
 Avoid:
 
@@ -227,6 +244,7 @@ Prefer:
 model/form.model.ts
 model/permissions.model.ts
 model/lifecycle.model.ts
+model/profile-page.model.ts  # orchestrates submodels with sample/combine
 ```
 
 ## Testing model behavior
