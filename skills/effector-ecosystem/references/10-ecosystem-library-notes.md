@@ -96,13 +96,13 @@ Use for readable complex branching from one decision point. Avoid for simple flo
 
 ## @withease/factories
 
-Use for repeated independent model instances.
+Use for repeated same-shaped Effector model code that needs independent model instances. Prefer it over copy-pasting repeated forms, filters, widgets, or similar models.
 
 Rules:
 
 - factory invocation at module top level
 - one config object parameter by default
-- plugin configured for local factories/SIDs
+- plugin `factories` field configured for SSR/SIDs
 - no factory calls in React render/hooks
 
 ## atomic-router

@@ -28,6 +28,7 @@ Use this checklist when reviewing code.
 - Are reducers not accidentally returning `undefined`?
 - Is complex branching readable (`sample`/`split`/`effector-action`)?
 - Are events named as facts?
+- Is repeated same-shaped model code extracted to factories instead of copy-pasted?
 - Are factories invoked only at module top level?
 
 ## Farfetched/contracts
@@ -73,7 +74,7 @@ Use this checklist when reviewing code.
 - Are Effector ESLint presets enabled?
 - Are Scope-specific lint rules enabled when Scope is used?
 - Is Steiger or another FSD boundary checker enabled when the team requires automation?
-- Are factory/SID requirements handled by Babel/SWC plugin?
+- Are factory/SID requirements handled by Babel/SWC plugin, including the `factories` field for SSR?
 - Is `@effector/next` used for Next.js SSR/hydration instead of custom ad-hoc glue?
 
 ## Red flags

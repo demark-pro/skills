@@ -136,18 +136,19 @@ Do not use it for simple one- or two-step flows where `sample` is clearer.
 
 ### `@withease/factories`
 
-Use for model factories when a slice needs multiple independent instances of the same model.
+Use for model factories when a slice has repeated same-shaped Effector model code and needs multiple independent instances of the same model. Prefer it over copy-pasting repeated form, filter, or widget models.
 
 Use only when repeated model instances are real, for example:
 
 - many independent forms with the same behavior
 - reusable tabs/list filters
 - per-widget isolated models
+- SSR/Scope/SID-sensitive apps where factory invocation must stay safe and discoverable
 
 Rules:
 
 - invoke factories at module top level, not inside React render
-- configure Effector Babel/SWC plugin for factories/SIDs when needed
+- configure Effector Babel/SWC plugin `factories` field for SSR/SIDs
 - prefer one config object argument
 - export a ready instance from a slice public API, not the raw factory unless the consumer must create instances
 

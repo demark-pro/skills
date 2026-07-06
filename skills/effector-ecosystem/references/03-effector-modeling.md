@@ -178,14 +178,14 @@ Use Patronum for common patterns instead of custom `watch` or timer logic:
 
 ## Factories
 
-Use factories only for repeated independent model instances.
+Prefer factories over copy-pasted Effector model code for repeated same-shaped behavior. Use them only when the resulting model instances are independent.
 
 Rules:
 
 - define factory in `model/create-*.model.ts`
 - invoke at module top level
 - export the instance through slice public API
-- configure Effector Babel/SWC plugin for local factories when SSR/SIDs matter
+- use `@withease/factories` in SSR/Scope/SID-sensitive apps and configure the Effector Babel/SWC plugin `factories` field
 - do not invoke factories in React components
 
 ## File organization inside a slice

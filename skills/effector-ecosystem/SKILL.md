@@ -125,6 +125,7 @@ Use:
 - `combine` for view models
 - `split` or `effector-action` for complex branching when it improves readability
 - `patronum` for common operators like debounce, throttle, reset, status, pending helpers
+- factories for repeated same-shaped model logic that needs independent instances
 - `scopeBind` for callbacks that leave Effector's call stack and must still work inside a Scope
 
 Avoid:
@@ -137,6 +138,8 @@ Avoid:
 - using derived stores as mutation targets
 - returning `undefined` from store reducers unless `skipVoid: false` is intentional
 - huge object stores when several atomic stores are clearer
+
+Prefer factories over copy-pasted Effector model code for repeated forms, filters, widgets, or other independent instances with the same behavior. In SSR/Scope/SID-sensitive apps, use [`@withease/factories`](https://withease.effector.dev/factories/) and configure the Effector Babel/SWC plugin `factories` field; invoke factories at module top level, never during render.
 
 ### 4. Farfetched owns remote operations
 
