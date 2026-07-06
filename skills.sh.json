@@ -5,7 +5,7 @@
     {
       "title": "Frontend",
       "description": "Skills for React, Effector, Feature-Sliced Design, and frontend architecture.",
-      "skills": ["effector-ecosystem"]
+      "skills": ["effector-ecosystem", "effector-fsd"]
     }
   ]
 }

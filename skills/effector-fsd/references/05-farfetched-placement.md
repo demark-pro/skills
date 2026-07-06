@@ -2,6 +2,16 @@
 
 Use this file to place queries, mutations, contracts, DTO mappers, barriers, cache/update policy, and route loaders.
 
+## Contents
+
+- Default matrix
+- Contracts
+- Queries
+- Mutations
+- Cache/update policy
+- Barriers and auth refresh
+- Route loaders
+
 ## Default matrix
 
 | Farfetched concern | Default FSD owner |

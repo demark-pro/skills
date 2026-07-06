@@ -1,27 +1,31 @@
-# Effector Ecosystem Skill
+# Effector Skills
 
 [![skills.sh](https://skills.sh/b/demark-pro/skills)](https://skills.sh/demark-pro/skills)
 
-Reusable agent skill for designing, reviewing, refactoring, and generating frontend code with the Effector ecosystem.
+Reusable agent skills for designing, reviewing, refactoring, and generating frontend code with the Effector ecosystem.
 
-It covers React, Feature-Sliced Design, Effector, `effector-react`, Farfetched, contracts, Patronum, routing, forms, persistence, i18n, testing, and tooling. The skill is intentionally not admin-panel-specific: it works for product applications with auth flows, lists, detail screens, dashboards, settings, profiles, and other frontend workflows.
+## Skills
+
+- `effector-ecosystem`: Effector, `effector-react`, Farfetched, Atomic Router, `@effector/next`, Scope, SSR/hydration, persistence, forms, i18n, testing, and ecosystem package guidance.
+- `effector-fsd`: Feature-Sliced Design structure for Effector projects: layers, slices, segments, public APIs, imports, placement, Next.js adapters, Farfetched placement, and Steiger checks.
 
 Core principle:
 
-> UI is dumb. Business logic is declarative. Remote data is validated. Pages orchestrate. Features represent user actions. Entities represent domain objects. Shared code has no business knowledge.
+> UI is dumb. Business logic is declarative. Remote data is validated. Structure follows ownership and dependency direction.
 
 ## Install
 
-Install with the `skills` CLI:
+Install both skills with the `skills` CLI:
+
+```bash
+npx skills add demark-pro/skills --agent codex -g
+```
+
+Install one skill explicitly:
 
 ```bash
 npx skills add demark-pro/skills --skill effector-ecosystem -a codex -g
-```
-
-For all supported agents:
-
-```bash
-npx skills add demark-pro/skills --skill effector-ecosystem --agent '*' -g
+npx skills add demark-pro/skills --skill effector-fsd -a codex -g
 ```
 
 To preview available skills in this repository:
@@ -32,19 +36,21 @@ npx skills add demark-pro/skills --list
 
 ## Use
 
-Invoke it explicitly:
+Invoke skills explicitly:
 
 ```text
-Use $effector-ecosystem to review this Effector/FSD feature and suggest a better structure.
+Use $effector-ecosystem to review this Farfetched mutation and scope handling.
+Use $effector-fsd to decide where this route model and protected auth flow belong.
 ```
 
-Or ask for work that matches the skill description, such as:
+Or ask for work that matches a skill description, such as:
 
-- Designing an Effector + FSD project structure
-- Reviewing Effector models for anti-patterns
-- Creating Farfetched queries or mutations with contracts
-- Deciding where pages, widgets, features, entities, API code, forms, and routes belong
-- Refactoring React component logic into declarative Effector models
+- Designing Effector/Farfetched/Atomic Router models
+- Reviewing Scope, SSR, `useUnit`, or Farfetched anti-patterns
+- Creating queries, mutations, barriers, route models, forms, or tests
+- Designing an Effector + FSD project structure with correct placement
+- Deciding where pages, widgets, features, entities, API code, forms, contracts, routes, and adapters belong
+- Refactoring legacy `src/api`, `src/store`, `src/components`, and `src/utils` into FSD
 
 ## Repository Layout
 
@@ -56,9 +62,16 @@ skills/
     references/
     templates/
     examples/
+  effector-fsd/
+    SKILL.md
+    agents/openai.yaml
+    references/
+    templates/
+    examples/
 skills.sh.json
 ```
 
-## Skill
+## Skill Files
 
-The skill lives at [`skills/effector-ecosystem/SKILL.md`](skills/effector-ecosystem/SKILL.md).
+- [`skills/effector-ecosystem/SKILL.md`](skills/effector-ecosystem/SKILL.md)
+- [`skills/effector-fsd/SKILL.md`](skills/effector-fsd/SKILL.md)

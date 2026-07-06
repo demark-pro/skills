@@ -2,6 +2,16 @@
 
 Use this file when reviewing imports and exports.
 
+## Contents
+
+- Public API goals
+- Good public APIs
+- Bad public APIs
+- Import style
+- Same-layer cross-imports
+- `@x` entity cross-imports
+- Testing imports
+
 ## Public API goals
 
 A public API should:

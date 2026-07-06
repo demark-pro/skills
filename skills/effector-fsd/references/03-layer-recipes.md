@@ -2,6 +2,15 @@
 
 Use this file for common placement decisions.
 
+## Contents
+
+- App layer
+- Pages layer
+- Widgets layer
+- Features layer
+- Entities layer
+- Shared layer
+
 ## App layer
 
 Use for composition and application lifecycle.

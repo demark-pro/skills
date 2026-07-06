@@ -2,6 +2,16 @@
 
 Use this file when configuring automated checks.
 
+## Contents
+
+- Steiger
+- Common Steiger rules to care about
+- When to disable a rule
+- ESLint with Effector
+- Path aliases
+- Next.js tooling
+- CI checks
+
 ## Steiger
 
 Use `steiger` with `@feature-sliced/steiger-plugin` for FSD structure/import checks.

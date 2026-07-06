@@ -2,6 +2,17 @@
 
 Use this file to decide structural rules before choosing an exact Effector implementation.
 
+## Contents
+
+- Layers
+- Import rule
+- App and Shared exceptions
+- Slices
+- Segments
+- Public API rule
+- `@x` cross-imports
+- Incremental adoption
+
 ## Layers
 
 Default order:

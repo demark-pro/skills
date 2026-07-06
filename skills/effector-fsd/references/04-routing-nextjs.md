@@ -2,6 +2,16 @@
 
 Use this file when placing Atomic Router, protected routes, framework routes, and Next.js adapters.
 
+## Contents
+
+- Atomic Router placement
+- Protected routes
+- Farfetched route loaders
+- Next.js folder conflict
+- Next.js App Router adapter
+- Server and client public APIs
+- Pages Router
+
 ## Atomic Router placement
 
 ```txt

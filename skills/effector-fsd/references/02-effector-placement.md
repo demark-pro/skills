@@ -2,6 +2,17 @@
 
 Use this file when placing Effector stores, events, effects, factories, models, React bindings, and lifecycle wiring.
 
+## Contents
+
+- Core ownership rule
+- Layer matrix
+- Model file organization
+- Public model shape
+- Factories
+- Effects and side effects
+- Startup and Scope
+- React binding placement
+
 ## Core ownership rule
 
 Place an Effector unit where the **fact it represents** belongs.

@@ -1,5 +1,20 @@
 # FSD + Effector anti-patterns
 
+## Contents
+
+- Global technical folders
+- Shared with business domain knowledge
+- Direct imports from slice internals
+- Same-layer feature coupling
+- Features named after UI mechanics
+- Entity imports feature/page
+- Page logic hidden in feature
+- Widget for every component
+- Contracts dumped into shared
+- Auth barrier in shared updates session or navigates
+- Next.js framework route becomes business model
+- Model split by unit type
+
 ## Global technical folders
 
 Bad:

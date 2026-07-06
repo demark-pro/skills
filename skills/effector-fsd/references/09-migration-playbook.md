@@ -2,6 +2,21 @@
 
 Use this file for incremental refactors.
 
+## Contents
+
+- Principle
+- Step 1. Establish route/page boundaries
+- Step 2. Create app and shared foundations
+- Step 3. Unpack global API/model/store dumps
+- Step 4. Extract entities
+- Step 5. Extract features
+- Step 6. Keep page-specific things in pages
+- Step 7. Add widgets only when useful
+- Step 8. Fix imports and public APIs
+- Step 9. Move auth/session infrastructure carefully
+- Step 10. Add tooling
+- Migration checklist
+
 ## Principle
 
 Do not rewrite the whole app. Move high-churn code first and preserve behavior with tests. FSD migration should reduce coupling, not create a ceremony tax.
