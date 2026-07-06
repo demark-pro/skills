@@ -26,11 +26,11 @@ Dumb component:
 
 Connected component:
 
-- imports a model/query/mutation/route from a public API
+- imports a model/query/mutation/route from the owning module boundary
 - calls `useUnit`
 - passes plain values/callbacks to dumb UI
 
-Prefer small connected components at slice boundaries.
+Prefer small connected components at ownership boundaries.
 
 ## Main rule: one `useUnit` shape per connected component
 

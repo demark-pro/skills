@@ -2,59 +2,12 @@
 
 ## Contents
 
-- FSD anti-patterns
+This file covers Effector ecosystem anti-patterns. Use `effector-fsd` for structure, import-boundary, public API, and slice anti-patterns.
+
 - Effector anti-patterns
 - Farfetched anti-patterns
 - React anti-patterns
 - Persistence anti-patterns
-
-## FSD anti-patterns
-
-### Deep imports across slices
-
-```ts
-// bad
-import { $user } from '@/entities/user/model/user.model';
-```
-
-Use public API:
-
-```ts
-// good
-import { $user } from '@/entities/user';
-```
-
-### Business code in `shared`
-
-```txt
-shared/types/user.ts      # bad
-shared/api/users.ts       # bad
-shared/ui/user-avatar.tsx # bad
-```
-
-Move to `entities/user`.
-
-### Too many technical features
-
-Bad:
-
-```txt
-features/open-modal
-features/set-search
-features/change-page
-```
-
-Good:
-
-```txt
-features/profile-update
-features/comment-create
-features/session-login
-```
-
-### Widget for everything
-
-Do not create widgets for tiny one-page components.
 
 ## Effector anti-patterns
 
@@ -168,7 +121,7 @@ Use a named pure function and let the model stay declarative:
 export const $rows = combine($users, $permissions, toUserRows);
 ```
 
-Put DTO mapping near `mapData`/API/entity `lib`, domain calculations in the owning slice `lib`, and UI-only formatting at the presentation boundary.
+Put DTO mapping near `mapData`/API mapping code, domain calculations near the owning domain module, and UI-only formatting at the presentation boundary.
 
 ## Farfetched anti-patterns
 
@@ -233,7 +186,7 @@ Do not patch cached lists if backend sorting/filtering/permissions can change vi
 
 ### Query/mutation created in component
 
-Create remote operations statically in slice API/model files.
+Create remote operations statically in API/model files owned by the relevant module.
 
 ## React anti-patterns
 
@@ -388,10 +341,10 @@ keepFresh(userQuery, { triggers: [appStarted] });
 
 This is incomplete if the query has never received params. Trigger the first `start` from route/app/page model, then use `keepFresh` for revalidation.
 
-### Shared auth barrier performs navigation
+### Auth barrier performs navigation
 
 ```ts
-// shared/api/auth-barrier.ts
+// auth/session barrier module
 refreshSessionMutation.finished.failure.watch(() => loginRoute.open());
 ```
 

@@ -1,6 +1,6 @@
 ---
 name: effector-ecosystem
-description: "Use when designing, reviewing, generating, or refactoring React frontend applications built with Feature-Sliced Design, effector, effector-react, Farfetched, contracts, patronum, atomic-router, effector-storage, forms, i18n, testing, Next.js SSR/hydration, and related tooling. Explains where code belongs, which packages to use, and which Effector/FSD anti-patterns to avoid."
+description: "Use when designing, reviewing, generating, or refactoring React applications built with Effector, effector-react, Farfetched, Atomic Router, @effector/next, patronum, effector-storage, forms, i18n, testing, and related Effector ecosystem tooling. For Feature-Sliced Design project structure and placement decisions, use the separate effector-fsd skill."
 license: MIT
 ---
 
@@ -13,51 +13,50 @@ Use this skill for frontend applications that use or plan to use:
 - React or React-compatible UI
 - Effector for business logic and state
 - `effector-react` for binding units to components
-- Feature-Sliced Design for project structure
 - Farfetched for remote operations
 - `@withease/contracts` or compatible contracts for runtime validation
-- Supporting packages from the Effector ecosystem: `patronum`, `atomic-router`, `effector-storage`, `effector-action`, `effector-forms`, `@withease/factories`, `@withease/i18next`, `@withease/web-api`, `@effector/next`, `@effector/reflect`, `@withease/redux`, `eslint-plugin-effector`, Steiger, Effector Babel/SWC plugins
+- Supporting packages from the Effector ecosystem: `patronum`, `atomic-router`, `effector-storage`, `effector-action`, `effector-forms`, `@withease/factories`, `@withease/i18next`, `@withease/web-api`, `@effector/next`, `@effector/reflect`, `@withease/redux`, `eslint-plugin-effector`, Effector Babel/SWC plugins
 
-This skill is **not specific to admin panels**. Admin tables and CRUD are examples, not the default assumption.
+This skill is **project-structure agnostic**. It may use paths like `entities/user` or `shared/api` in examples, but it must not decide Feature-Sliced Design placement rules. When the question is mainly about layers, slices, public APIs, import boundaries, file placement, or project structure in an Effector project, use `effector-fsd`.
 
 The target architecture:
 
-> UI is dumb. Business logic is declarative. Remote data is validated. Pages orchestrate. Features represent user actions. Entities represent domain objects. Shared code has no business knowledge.
+> UI is dumb. Business logic is declarative. Remote data is validated. Startup is explicit and scoped. Remote-operation semantics are modeled, not hidden in React components.
 
 ## Activation triggers
 
 Use this skill when the user asks about:
 
-- Project structure for Effector/FSD
-- Where to place models, queries, mutations, contracts, forms, routes, widgets, or UI
-- How to split code into `app`, `pages`, `widgets`, `features`, `entities`, `shared`
-- Best practices or anti-patterns in Effector
-- Farfetched query/mutation organization
-- Contracts and API validation
-- Choosing packages in the Effector ecosystem
-- Refactoring from component-local logic into Effector models
-- Reviewing code for architecture violations
-- Creating templates for slices, models, API, forms, routing, persistence, or tests
-- Next.js App Router, Pages Router, SSR, hydration, or `@effector/next` integration
+- Effector model design
+- `sample`, `combine`, `attach`, effects, stores, events, factories, Scope, SSR, `scopeBind`
+- React binding with `useUnit`
+- Farfetched query/mutation/barrier/cache/concurrency/contracts
+- Atomic Router route models and route loaders
+- `@effector/next`, App Router, Pages Router, SSR, hydration, Scope serialization
+- Persistence, forms, i18n, browser APIs, testing, and ecosystem package choice
+- Reviewing code for Effector/Farfetched/Scope/React anti-patterns
+- Creating templates for models, queries, mutations, forms, routing, persistence, or tests
+
+Do **not** use this skill as the primary source for FSD structure. Use `effector-fsd` for placement and import-boundary decisions.
 
 ## First response behavior
 
-When answering, do not immediately generate a huge structure unless the user asks for it. First identify the goal:
+When answering, first identify the goal:
 
-1. Designing a new project
-2. Refactoring an existing project
+1. Designing a model or flow
+2. Refactoring an existing model/component/API operation
 3. Reviewing a code fragment
-4. Choosing packages
-5. Creating a slice/model/query/form/route
-6. Writing architecture rules for a team
+4. Choosing ecosystem packages
+5. Creating a query, mutation, route, form, persistence adapter, or test
+6. Integrating with SSR/Next.js/Scope
 
-If the user gives code, review the code against this skill and return:
+If the user gives code, review it against this skill and return:
 
 - What is good
 - What is wrong
 - Why it is wrong
-- Where the code should live
-- A corrected version
+- A minimal corrected version
+- Any placement note only as an example, unless `effector-fsd` is also in scope
 
 ## Non-negotiable principles
 
@@ -145,9 +144,9 @@ Avoid:
 
 Prefer concern-based submodels over large all-in-one models. When a model grows into several workflows, split it into submodels such as `$$form`, `$$filters`, `$$list`, `$$selection`, or `$$dialog`; keep each submodel responsible for its own state and local rules. The top-level model should stay thin and orchestrate interactions between submodels with `sample` and other declarative connections.
 
-Keep Effector models declarative by extracting non-trivial data transformation to named pure functions. Small boolean checks or simple field joins can stay inline; complex mapping, sorting, grouping, DTO normalization, permission-derived view models, or formatting should live in `lib`, API mapping files, entity/feature helpers, or a presentation boundary. The model should connect stores/events and call these functions, not hide algorithms inside reactive operators.
+Keep Effector models declarative by extracting non-trivial data transformation to named pure functions. Small boolean checks or simple field joins can stay inline; complex mapping, sorting, grouping, DTO normalization, permission-derived view models, or formatting should live near the owning model/API/domain helper. The model should connect stores/events and call these functions, not hide algorithms inside reactive operators.
 
-Prefer factories over copy-pasted Effector model code for repeated forms, filters, widgets, or other independent instances with the same behavior. In SSR/Scope/SID-sensitive apps, use [`@withease/factories`](https://withease.effector.dev/factories/) and configure the Effector Babel/SWC plugin `factories` field; invoke factories at module top level, never during render.
+Prefer factories over copy-pasted Effector model code for repeated forms, filters, widgets, or other independent instances with the same behavior. In SSR/Scope/SID-sensitive apps, use `@withease/factories` and configure the Effector Babel/SWC plugin `factories` field; invoke factories at module top level, never during render.
 
 ### 4. Farfetched owns remote operations
 
@@ -165,7 +164,7 @@ Use Farfetched for backend communication:
 - `request.fetch.credentials` for cookie/session APIs in current Farfetched code
 - `@farfetched/atomic-router` for query-driven route loading when Atomic Router is used
 
-Never trust backend data without a contract.
+Never trust backend data without a runtime contract.
 
 ### 5. Application startup must be explicit and scoped
 
@@ -190,94 +189,24 @@ Treat that sequence as wrong by default. Prefer modeling adapter installation as
 
 Use `allSettled(scope)` only when you intentionally need to wait for already-started async work that was triggered outside the direct `allSettled(event, { scope })` call, for example by a `scopeBind` callback from a timer, SDK, history listener, or WebSocket.
 
-### 6. FSD boundaries must be explicit
-
-Use layers:
-
-```txt
-app -> pages -> widgets -> features -> entities -> shared
-```
-
-Imports must point only downward by layer.
-
-Each slice must expose public API through `index.ts`.
-
-External code must import from slice public API, not internal files.
-
-Inside a slice, use relative imports. Between slices, use absolute imports.
-
-### 7. Packages are chosen by purpose
+### 6. Packages are chosen by purpose
 
 Do not add packages because they are popular. Choose them when they solve a specific architectural problem.
 
 Use the package map in `references/01-package-map.md` and the detailed notes in `references/10-ecosystem-library-notes.md`.
 
-## Default project shape
+## Path examples
+
+Code examples may use path aliases such as:
 
 ```txt
-src/
-  app/
-    entrypoint/
-    providers/
-    routes/
-    store/
-    styles/
-
-  pages/
-    <page-name>/
-      index.ts
-      route.ts
-      ui/
-      model/
-      api/        # only page-specific remote operations
-      lib/
-
-  widgets/
-    <widget-name>/
-      index.ts
-      ui/
-      model/
-      lib/
-
-  features/
-    <user-action>/
-      index.ts
-      ui/
-      model/
-      api/
-      lib/
-
-  entities/
-    <domain-entity>/
-      index.ts
-      @x/         # only for explicit entity cross-imports
-      ui/
-      model/
-      api/
-      lib/
-
-  shared/
-    api/
-    config/
-    routes/
-    ui/
-    lib/
-    i18n/
-    assets/
+@/shared/api/base-url
+@/entities/session
+@/features/profile-update
+@/pages/user/model/page.model
 ```
 
-Do not create all segments automatically. Add a segment only when it has real content.
-
-## Placement rules
-
-Use this decision tree:
-
-1. Is it application bootstrap, providers, router config, scope, global styles? Put it in `app`.
-2. Is it a complete route/screen and page-specific orchestration? Put it in `pages/<page>`.
-3. Is it a large reusable block assembled from entities/features? Put it in `widgets/<widget>`.
-4. Is it a user action or business capability? Put it in `features/<action>`.
-5. Is it a domain object, type, contract, basic entity API, or entity visual? Put it in `entities/<entity>`.
-6. Is it domain-independent infrastructure, UI primitive, helper, config, route path, or adapter? Put it in `shared`.
+These are illustrative. Do not infer full project-structure rules from this skill. For placement and boundary decisions, use `effector-fsd`.
 
 ## Naming rules
 
@@ -334,7 +263,6 @@ Before giving a detailed answer, consult the relevant files:
 
 - `references/00-source-policy.md`
 - `references/01-package-map.md`
-- `references/02-fsd-placement.md`
 - `references/03-effector-modeling.md`
 - `references/04-farfetched-contracts.md`
 - `references/05-react-ui-binding.md`
@@ -347,8 +275,10 @@ Before giving a detailed answer, consult the relevant files:
 
 ## Default answer style
 
-Be specific. Prefer concrete placement and code examples.
+Be specific. Prefer concrete code examples.
 
 When correcting code, show the minimal correct version first, then explain.
+
+When placement is the central question, switch to or ask to apply `effector-fsd`.
 
 When a choice is trade-off based, say what the default should be and when to deviate.

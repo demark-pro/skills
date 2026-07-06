@@ -111,7 +111,7 @@ sample({
 });
 ```
 
-In larger FSD code, the `updateUserSubmitted` event normally lives in a feature/page model and the Farfetched operation lives in the owning API/entity slice. The important part is the boundary: user intent is gated in Effector model code, while the operation keeps a predictable remote lifecycle.
+In larger layered code, the `updateUserSubmitted` event normally lives near the user-action/page model and the Farfetched operation lives near the owning API/domain module. The important part is the boundary: user intent is gated in Effector model code, while the operation keeps a predictable remote lifecycle.
 
 ## Request shape
 
@@ -130,7 +130,7 @@ Rules:
 
 - Do not send `body` with `GET`/`HEAD` requests.
 - For cookie/session APIs, use `request.fetch.credentials`, for example `fetch: { credentials: 'include' }`. Do not rely on the old top-level `credentials` option in new Farfetched code.
-- Keep domain-independent URL/base/header helpers in `shared/api`; keep endpoint-specific params/mapping in the owning slice.
+- Keep domain-independent URL/base/header helpers near transport infrastructure; keep endpoint-specific params/mapping near the operation owner.
 - If auth headers depend on stores, use a shared request adapter or `attach`-style infrastructure around non-Farfetched effects only when Farfetched cannot express the need directly.
 
 ## Contracts
@@ -156,7 +156,7 @@ features/profile-update/model/profile-update.contract.ts
 shared/api/problem.contract.ts
 ```
 
-Do not put all business DTOs into `shared/contracts`.
+Do not put all business DTOs into a global contracts bucket.
 
 Use another validator only if the project already standardizes on it. The architecture rule is not “use one specific validator at all costs”; the rule is “validate unknown remote data at runtime before using it as domain data”.
 
@@ -386,9 +386,10 @@ applyBarrier([userQuery, updateUserMutation], { barrier: authBarrier });
 
 Rules:
 
-- Place shared auth/network barriers in `shared/api` or `app` integration, depending on whether they are pure transport infrastructure or application lifecycle policy.
-- Apply barriers in the owning slice API/model, close to the operation, so reviewers can see the remote behavior.
-- Keep UI redirects out of the shared barrier. Convert refresh failure into app/session events, then route from page/app routing models.
+- Keep pure transport helpers in `shared/api` only when they have no domain imports.
+- If a barrier imports session/user contracts, updates session state, or coordinates many operations, place it at the owning domain/app integration boundary; in strict FSD use `effector-fsd` for placement.
+- Apply barriers close to the operation or in an app-level integration module so reviewers can see the remote behavior.
+- Keep UI redirects out of barriers. Convert refresh failure into app/session events, then route from page/app routing models.
 - Do not make every operation depend on an auth barrier if some endpoints are intentionally public.
 
 ## Atomic Router integration
@@ -419,12 +420,15 @@ export const postFreshRoute = chainRoute({
 
 If query params do not match route open payload, add a small adapter in the page model or create a page-specific query whose params shape is the route payload. Do not hide route-param mapping in React components.
 
-## Placement
+## Placement examples
+
+These paths are examples only. For normative Feature-Sliced Design placement rules, use `effector-fsd`.
 
 ```txt
 shared/api/http.ts                         # base request helpers, headers, base URL
 shared/api/errors.ts                       # project RemoteError mapping
-shared/api/auth-barrier.ts                 # shared remote infra
+entities/session/api/session-refresh-barrier.ts # session-aware barrier example
+app/api/apply-auth-barriers.ts              # app-level barrier application example
 entities/user/model/user.contract.ts       # User DTO/domain validation
 entities/user/model/user.mapper.ts         # DTO -> domain mapper if non-trivial
 entities/user/api/user.query.ts            # reusable user reads
@@ -499,7 +503,7 @@ Do not patch cached lists if backend sorting/filtering/permissions can change th
 
 ### Barrier with UI policy inside shared API
 
-Do not redirect to login from `shared/api/auth-barrier.ts`. Emit auth/session facts and let app/page routing decide.
+Do not redirect to login from a Farfetched barrier. Emit auth/session facts and let app/page routing decide.
 
 ### Query/mutation in component
 

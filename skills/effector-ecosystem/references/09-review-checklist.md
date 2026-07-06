@@ -1,28 +1,6 @@
 # Review checklist
 
-Use this checklist when reviewing code.
-
-## Contents
-
-- FSD
-- Effector
-- Farfetched/contracts
-- React
-- Routing/forms/persistence/i18n
-- Packages/tooling
-- Red flags
-
-## FSD
-
-- Does each slice have public API?
-- Are external imports made through public API?
-- Do imports go only downward by layer?
-- Are same-layer cross-imports absent or explicitly documented?
-- Is `shared` free of business domain code?
-- Are features real user actions, not technical events?
-- Are page-specific filters/sorting/pagination kept in page model?
-- Are reusable large blocks placed in widgets only when justified?
-- Are framework routes only adapters to FSD pages/models?
+Use this checklist when reviewing Effector ecosystem code. Use `effector-fsd` for project-structure and import-boundary review.
 
 ## Effector
 
@@ -56,7 +34,7 @@ Use this checklist when reviewing code.
 - Are responses validated with contracts?
 - Is DTO mapping isolated in `mapData` or domain lib?
 - Are errors normalized before UI consumes them?
-- Is query/mutation placed at the correct FSD layer?
+- Is query/mutation ownership clear and placed near the correct operation/domain boundary?
 - Is concurrency strategy intentional and applied through the operator?
 - For submits, is duplicate-click protection an explicit `$pending` gate in the feature/page model, unless `TAKE_FIRST` is justified and tested?
 - Is `.refresh`, `keepFresh`, cache, or update strategy correct?
@@ -78,8 +56,6 @@ Use this checklist when reviewing code.
 - Are raw events/effects not passed to DOM handlers or ordinary callback props?
 - Is component splitting used when subscription granularity matters?
 - Does UI only render and send events?
-- Are shared UI components domain-independent?
-- Are entity visuals free of feature/page orchestration?
 - Are units/factories absent from render/hooks?
 
 ## Routing/forms/persistence/i18n
@@ -101,7 +77,6 @@ Use this checklist when reviewing code.
 - Is there duplicated custom logic that Patronum/Farfetched already solves?
 - Are Effector ESLint presets enabled?
 - Are Scope-specific lint rules enabled when Scope is used?
-- Is Steiger or another FSD boundary checker enabled when the team requires automation?
 - Are factory/SID requirements handled by Babel/SWC plugin, including the `factories` field for SSR?
 - Is `@effector/next` used for Next.js SSR/hydration instead of custom ad-hoc glue?
 - Is a fresh Scope created per Next.js request/page computation?
@@ -113,14 +88,11 @@ Use this checklist when reviewing code.
 
 - `src/api/users.ts` with business endpoint soup
 - `src/store/index.ts` global model with all domains
-- one slice model owning form, filters, list loading, selection, dialogs, and actions at once
-- `shared/types/*.ts` full of domain types
-- `features/*` named after UI events
+- one model owning form, filters, list loading, selection, dialogs, and actions at once
 - `watch` triggering effects
 - `getState` inside effects
 - `fetch` in React components
 - contracts missing from backend responses
-- direct imports from `model/`, `api/`, or `ui/` of another slice
 - multiple `useUnit` calls in one connected component without a render-granularity reason
 - raw event/effect calls from React components
 - persistence without validation/pickup in scoped apps

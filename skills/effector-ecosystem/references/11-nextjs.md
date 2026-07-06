@@ -1,6 +1,6 @@
 # Next.js with Effector
 
-Use this file when the project uses Next.js with Effector, Farfetched, Atomic Router, or FSD. Next.js has multiple runtimes and rendering boundaries; treat Scope and serialization as architecture, not as glue code.
+Use this file when the project uses Next.js with Effector, Farfetched, or Atomic Router. Next.js has multiple runtimes and rendering boundaries; treat Scope and serialization as architecture, not as glue code.
 
 ## Contents
 
@@ -15,7 +15,7 @@ Use this file when the project uses Next.js with Effector, Farfetched, Atomic Ro
 - Farfetched in Next.js
 - Startup model
 - Caveats
-- Placement
+- Path examples
 - Anti-patterns
 
 ## Default rule
@@ -290,7 +290,7 @@ Use Atomic Router for Effector-native routing in SPA-like flows. Use the Next ro
 
 Use the same Farfetched operation rules as in ordinary Effector apps:
 
-- create queries/mutations statically in slices
+- create queries/mutations statically in their owning modules
 - validate responses with contracts
 - start route/page queries from `pageStarted` or route events
 - use `allSettled(pageStarted, { scope, params })` in server code
@@ -341,7 +341,9 @@ Default: represent router/history/clock/browser integration setup as scoped effe
 - Avoid non-serializable store values in SSR. If unavoidable, define explicit custom serialization/hydration at the store boundary.
 - Do not use `serialize: 'ignore'` as a lazy fix for stores that should actually hydrate.
 
-## Placement
+## Path examples
+
+These paths are illustrative. Use `effector-fsd` for normative FSD/Next.js placement decisions.
 
 ```txt
 src/app/layout.tsx                         # EffectorNext root provider

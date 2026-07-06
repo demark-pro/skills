@@ -2,13 +2,14 @@
 
 ## Contents
 
+This file covers Effector ecosystem testing/tooling. Use `effector-fsd` for FSD/Steiger checks.
+
 - Testing Effector models
 - Testing app/page startup
 - Testing Farfetched flows
 - UI tests
 - Scope/SSR checks
 - ESLint
-- FSD linting
 - TypeScript
 - Build plugin
 - Next.js
@@ -154,17 +155,6 @@ Scope checks to value highly:
 - persist requires `pickup` when scopes are used
 - strict effect handler discipline in tests
 
-## FSD linting
-
-Use Steiger and `@feature-sliced/steiger-plugin` to automate FSD checks:
-
-- public API rule
-- import boundaries
-- layer/slice structure
-- forbidden cross-imports
-
-Steiger is strict and evolves. Document intentional exceptions.
-
 ## TypeScript
 
 Use strict mode.
@@ -235,7 +225,6 @@ At minimum, CI should run:
 - unit tests for Effector models
 - UI tests where relevant
 - ESLint with Effector presets
-- FSD linting where Steiger is adopted
 - build with the same plugin configuration used in production
 - SSR/Next build smoke test when Next.js is used
-- architecture review checklist for Farfetched contracts/barriers/routes on changed slices
+- architecture review checklist for Farfetched contracts/barriers/routes on changed ownership areas

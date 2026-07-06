@@ -1,3 +1,4 @@
+// Example placement for strict FSD: entities/session/api/session-refresh-barrier.ts or app/api/apply-auth-barriers.ts
 import {
   applyBarrier,
   createBarrier,

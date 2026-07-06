@@ -1,6 +1,6 @@
 # Ecosystem library notes
 
-This file summarizes the practical rules for each common Effector ecosystem library.
+This file summarizes the practical rules for common Effector ecosystem libraries. Use `effector-fsd` for Feature-Sliced Design and Steiger.
 
 ## Contents
 
@@ -20,7 +20,6 @@ This file summarizes the practical rules for each common Effector ecosystem libr
 - @withease/web-api
 - @withease/redux
 - eslint-plugin-effector
-- Steiger
 - Effector Babel/SWC plugin
 
 ## Effector
@@ -163,10 +162,6 @@ Use only for Redux migration/interoperability. Do not add Redux to new Effector-
 ## eslint-plugin-effector
 
 Use recommended/react/scope/patronum presets as appropriate. Pay special attention to rules around `useUnit`, mandatory Scope binding, units in render, unsafe `getState`, unsafe `watch`, and persistence pickup.
-
-## Steiger
-
-Use for automated FSD structure and import checks. Treat exceptions as architecture decisions that must be documented.
 
 ## Effector Babel/SWC plugin
 

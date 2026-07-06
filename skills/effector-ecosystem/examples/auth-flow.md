@@ -1,6 +1,6 @@
-# Example: auth flow
+# Example: auth flow with Effector/Farfetched
 
-## Structure
+This example uses FSD-like paths only to make imports readable. For normative placement, use `effector-fsd`.
 
 ```txt
 entities/session/
@@ -8,6 +8,7 @@ entities/session/
   model/session.contract.ts
   model/session.model.ts
   api/current-session.query.ts
+  api/session-refresh-barrier.ts
 
 features/session-login/
   index.ts
@@ -21,9 +22,8 @@ features/session-logout/
   api/logout.mutation.ts
 
 shared/api/
-  auth-barrier.ts
   base-url.ts
-  problem.contract.ts
+  errors.ts
 
 pages/login/
   index.ts
@@ -33,22 +33,11 @@ pages/login/
 
 app/routes/
   router.ts
-  routes.ts
-app/providers/
-  effector-provider.tsx
+  protected.ts
+  redirects.ts
 ```
 
-## Rules
-
-- `entities/session` owns current session domain state and session contract.
-- `features/session-login` performs the login user action.
-- `features/session-logout` performs the logout user action.
-- `shared/api/auth-barrier.ts` handles token refresh infrastructure only; it does not know page UI.
-- Pages decide redirects after login/logout if redirect is page-specific.
-- App-level auth guard can live in `app/routes` if it affects global route access.
-- React components bind model units through one `useUnit` object shape.
-
-## Feature model sketch
+## Login model sketch
 
 ```ts
 sample({
@@ -78,24 +67,30 @@ export const $$login = {
 ## Connected component sketch
 
 ```tsx
-const {
-  email,
-  password,
-  submitDisabled,
-  pending,
-  onEmailChange,
-  onPasswordChange,
-  onSubmit,
-} = useUnit($$login);
+import { useUnit } from 'effector-react';
+import { $$login } from '../model/login.model';
+
+export function LoginForm() {
+  const {
+    email,
+    password,
+    submitDisabled,
+    pending,
+    onEmailChange,
+    onPasswordChange,
+    onSubmit,
+  } = useUnit($$login);
+
+  return (
+    <form onSubmit={(event) => { event.preventDefault(); onSubmit(); }}>
+      <input value={email} onChange={(event) => onEmailChange(event.currentTarget.value)} />
+      <input value={password} onChange={(event) => onPasswordChange(event.currentTarget.value)} />
+      <button disabled={submitDisabled || pending}>Sign in</button>
+    </form>
+  );
+}
 ```
 
-Do not call `loginMutation.start` directly from JSX if the feature has a form event that owns validation and submit flow.
+## Auth barrier rule
 
-## Protected route extension
-
-For protected route + Farfetched barrier details, use `examples/protected-routes-auth-farfetched.md`. Keep the distinction clear:
-
-- `entities/session` owns current session state.
-- `shared/api/auth-barrier.ts` owns transport/session refresh infrastructure only.
-- `app/routes` or page route files own route protection and redirects.
-- Features such as login/logout own user actions.
+A session-aware barrier should not navigate. It refreshes/restores session and emits success/failure facts. Routing models decide redirects.

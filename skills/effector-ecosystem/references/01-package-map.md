@@ -149,7 +149,7 @@ Do not use it for simple one- or two-step flows where `sample` is clearer.
 
 ### `@withease/factories`
 
-Use for model factories when a slice has repeated same-shaped Effector model code and needs multiple independent instances of the same model. Prefer it over copy-pasting repeated form, filter, or widget models.
+Use for model factories when a module has repeated same-shaped Effector model code and needs multiple independent instances of the same model. Prefer it over copy-pasting repeated form, filter, or widget models.
 
 Use only when repeated model instances are real, for example:
 
@@ -163,7 +163,7 @@ Rules:
 - invoke factories at module top level, not inside React render
 - configure Effector Babel/SWC plugin `factories` field for SSR/SIDs
 - prefer one config object argument
-- export a ready instance from a slice public API, not the raw factory unless the consumer must create instances
+- export a ready instance from the owning module public boundary, not the raw factory unless the consumer must create instances
 
 ## Routing
 
@@ -177,7 +177,7 @@ Use when routes are part of Effector architecture:
 - guards and redirects
 - route composition with `chainRoute`
 
-Put route declarations in `shared/routes` or slice `route.ts` depending on ownership. Route-specific orchestration belongs to the page model, not the UI.
+Put route declarations near the router/page ownership boundary. Route-specific orchestration belongs to the route/page model, not the UI.
 
 Use Farfetched integration when a query is the `chainRoute` loader. Add `@farfetched/atomic-router` for query-driven route loading:
 
@@ -278,6 +278,8 @@ Do not introduce Redux into a new Effector-first architecture.
 
 ## Tooling
 
+This file covers Effector ecosystem tooling only. Use `effector-fsd` for FSD/Steiger tooling.
+
 ### `eslint-plugin-effector`
 
 Use presets:
@@ -288,9 +290,6 @@ Use presets:
 - `patronum` when using Patronum
 - `future` only when the team intentionally wants stricter future-oriented rules
 
-### Steiger / `@feature-sliced/steiger-plugin`
-
-Use to enforce FSD public API, imports, layers, slices, and cross-import rules. Document intentional exceptions.
 
 ### Effector Babel/SWC plugin
 
@@ -319,5 +318,4 @@ Community package factories are usually recognized by the plugin, but local fact
 - Browser signals: `@withease/web-api`
 - Reusable model instances: `@withease/factories`
 - Next.js SSR/App Router: `@effector/next` + per-request Scope + plugin/SIDs
-- FSD linting: Steiger
 - Effector linting: `eslint-plugin-effector`

@@ -159,13 +159,13 @@ Use Farfetched Atomic Router integration when a Farfetched Query is the route lo
 import { chainRoute, createRoute } from 'atomic-router';
 import { startChain, freshChain, barrierChain } from '@farfetched/atomic-router';
 import { postQuery } from '@/entities/post';
-import { authBarrier } from '@/shared/api/auth-barrier';
+import { sessionRefreshBarrier } from '@/entities/session';
 
 export const postRoute = createRoute<{ postId: string }>();
 
 export const postAuthorizedRoute = chainRoute({
   route: postRoute,
-  ...barrierChain(authBarrier),
+  ...barrierChain(sessionRefreshBarrier),
 });
 
 export const postLoadedRoute = chainRoute({

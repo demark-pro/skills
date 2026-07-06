@@ -17,7 +17,7 @@ Use this file when designing or reviewing Effector models.
 - Patronum
 - Submodel composition
 - Factories
-- File organization inside a slice
+- File organization inside a model module
 - Testing model behavior
 
 ## Static initialization
@@ -319,20 +319,20 @@ Rules:
 
 - define factory in `model/create-*.model.ts`
 - invoke at module top level
-- export the instance through slice public API
+- export the instance through the owning module public boundary
 - use `@withease/factories` in SSR/Scope/SID-sensitive apps and configure the Effector Babel/SWC plugin `factories` field
 - do not invoke factories in React components
 
-## File organization inside a slice
+## File organization inside a model module
 
-Small slice:
+Small model module:
 
 ```txt
 model.ts
 index.ts
 ```
 
-Medium slice:
+Medium model module:
 
 ```txt
 model/
@@ -346,7 +346,7 @@ ui/
 index.ts
 ```
 
-Large slice: split by feature/domain concern, not by “stores/events/effects” folders. Use a top-level `*.model.ts` only as an orchestration layer over focused submodels.
+Large model module: split by workflow/domain concern, not by “stores/events/effects” folders. Use a top-level `*.model.ts` only as an orchestration layer over focused submodels.
 
 Avoid:
 

@@ -66,17 +66,17 @@ Before giving code for these APIs, verify the installed/current docs when the an
 
 ## Architecture and tooling
 
-- Feature-Sliced Design docs: https://feature-sliced.design
-- FSD layers: https://feature-sliced.design/docs/reference/layers
-- FSD public API: https://feature-sliced.design/docs/reference/public-api
-- FSD cross-imports: https://feature-sliced.design/docs/guides/issues/cross-imports
 - eslint-plugin-effector: https://eslint.effector.dev
 - eslint-plugin-effector rules: https://eslint.effector.dev/rules/
-- Steiger: https://github.com/feature-sliced/steiger
 
 ## Trust rules
 
 - Use official docs over blog posts.
 - Treat README examples as package-specific, not universal architecture advice.
-- If docs conflict, prefer current package docs for API shape and Effector/FSD docs for architecture.
+- If docs conflict, prefer current package docs for API shape and Effector docs for lifecycle, Scope, and reactive architecture.
 - Do not invent package APIs. If an API is not confirmed, describe the architectural approach and tell the user to check current package docs.
+
+
+## Project-structure boundary
+
+This skill intentionally does not own Feature-Sliced Design rules. For FSD layers, slices, public APIs, import boundaries, Steiger, and placement decisions in Effector projects, use the separate `effector-fsd` skill. Path examples in this skill are illustrative only.
