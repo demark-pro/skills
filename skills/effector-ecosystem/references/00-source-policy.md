@@ -9,7 +9,7 @@ Prefer official documentation and package repositories. For version-specific API
 
 Before giving code for these APIs, verify the installed/current docs when the answer depends on exact shape:
 
-- Farfetched `createJsonQuery`, `createJsonMutation`, `concurrency`, `keepFresh`, `cache`, `update`, `createBarrier`, `applyBarrier`, and `@farfetched/atomic-router`
+- Farfetched `createJsonQuery`, `createJsonMutation`, `response.mapError` argument shape, `concurrency`, `keepFresh`, `cache`, `update`, `createBarrier`, `applyBarrier`, and `@farfetched/atomic-router`
 - Effector Scope APIs: `fork`, `allSettled`, `serialize`, `hydrate`, `scopeBind`
 - `@effector/next` App Router/Pages Router examples and caveats
 - Atomic Router `chainRoute`, protected routes, SSR support, and SWC plugin factory configuration

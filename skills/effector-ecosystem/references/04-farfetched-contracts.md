@@ -30,7 +30,7 @@ Use Farfetched for backend communication.
 - Runtime response validation: `response.contract`
 - DTO mapping: `response.mapData`
 - Error normalization: `response.mapError` or a shared API error mapper
-- Concurrency: `concurrency(operation, { strategy })`, not an obsolete factory config field
+- Concurrency: `concurrency(operation, { strategy })`, not an obsolete factory config field; use it deliberately for route/search/filter cancellation, and prefer an explicit `$pending` gate for submit de-duplication
 - Freshness/cache: `keepFresh`, `cache`, `.refresh`, and `update` deliberately, not by habit
 - Auth/availability gates: `createBarrier` + `applyBarrier`
 
@@ -71,6 +71,7 @@ For queries without params, omit `params` entirely or use the project-standard n
 ## Mutation template
 
 ```ts
+import { createEvent, sample } from 'effector';
 import { createJsonMutation, declareParams, concurrency } from '@farfetched/core';
 import { UserDtoContract, mapUserDto, type User } from '../model/user.contract';
 import { mapRemoteError } from '@/shared/api/errors';
@@ -80,6 +81,8 @@ export type UpdateUserParams = {
   id: string;
   values: { name: string };
 };
+
+export const updateUserSubmitted = createEvent<UpdateUserParams>();
 
 export const updateUserMutation = createJsonMutation({
   params: declareParams<UpdateUserParams>(),
@@ -96,9 +99,19 @@ export const updateUserMutation = createJsonMutation({
   },
 });
 
-// Typical submit behavior: ignore duplicate submit while the current mutation is pending.
-concurrency(updateUserMutation, { strategy: 'TAKE_FIRST' });
+// Submit de-duplication: keep request concurrency permissive and gate user intent explicitly.
+concurrency(updateUserMutation, { strategy: 'TAKE_EVERY' });
+
+sample({
+  clock: updateUserSubmitted,
+  source: updateUserMutation.$pending,
+  filter: (pending) => !pending,
+  fn: (_pending, params) => params,
+  target: updateUserMutation.start,
+});
 ```
+
+In larger FSD code, the `updateUserSubmitted` event normally lives in a feature/page model and the Farfetched operation lives in the owning API/entity slice. The important part is the boundary: user intent is gated in Effector model code, while the operation keeps a predictable remote lifecycle.
 
 ## Request shape
 
@@ -188,6 +201,18 @@ Examples:
 
 UI should consume a stable project error union, not parse arbitrary backend or Farfetched internals.
 
+Current Farfetched `mapError` receives an object. In `createJsonQuery`/`createJsonMutation`, place it under `response` and destructure at least `error`; use `params` and `headers` when the project error mapper needs context.
+
+```ts
+// good
+mapError: ({ error, params, headers }) => mapRemoteError(error, { params, headers });
+
+// bad: old/ambiguous shape; easy to break during Farfetched upgrades
+mapError: (error) => mapRemoteError(error);
+```
+
+`mapError` must be pure and must not throw. If normalization itself can fail, move that logic into an effect before the Farfetched operation or return a safe fallback error.
+
 ```ts
 export type RemoteError =
   | { kind: 'unauthorized' }
@@ -198,7 +223,8 @@ export type RemoteError =
 
 response: {
   contract: UserDtoContract,
-  mapError: ({ error }): RemoteError => mapRemoteError(error),
+  mapError: ({ error, params, headers }): RemoteError =>
+    mapRemoteError(error, { params, headers }),
 }
 ```
 
@@ -208,14 +234,34 @@ Use the `concurrency` operator, not a factory config field.
 
 Common strategies:
 
-- `TAKE_LATEST` for search, filters, autocomplete, and route params that change quickly
-- `TAKE_FIRST` for submit mutations where duplicate clicks must be ignored while pending
+- `TAKE_LATEST` for search, filters, autocomplete, and route params that change quickly, when aborting stale requests is desired and tested
 - `TAKE_EVERY` for independent requests; this is the default
+- `TAKE_FIRST` only when skipped starts are truly the desired remote-operation behavior and `$pending`/`finished.skip` behavior is covered by tests
 
 ```ts
 concurrency(searchQuery, { strategy: 'TAKE_LATEST' });
-concurrency(submitMutation, { strategy: 'TAKE_FIRST' });
+concurrency(independentMutation, { strategy: 'TAKE_EVERY' });
 ```
+
+### Submit de-duplication
+
+Do not use `TAKE_FIRST` as the default answer for form submits. Prefer an explicit Effector `$pending` gate around the user-intent event. This keeps duplicate-click policy visible in the feature/page model and avoids coupling UI submit semantics to Farfetched cancellation/skip internals.
+
+```ts
+export const formSubmitted = createEvent<FormValues>();
+
+concurrency(saveProfileMutation, { strategy: 'TAKE_EVERY' });
+
+sample({
+  clock: formSubmitted,
+  source: saveProfileMutation.$pending,
+  filter: (pending) => !pending,
+  fn: (_pending, values) => values,
+  target: saveProfileMutation.start,
+});
+```
+
+If the project still chooses `TAKE_FIRST` or `TAKE_LATEST` for a mutation, add scoped/browser tests that assert `$pending` returns to `false`, `finished.finally`/`finished.skip` behavior is understood, and the UI does not remain disabled after skipped/aborted starts.
 
 Use `abortAll` when a lifecycle event must cancel in-flight work, for example route close or logout.
 

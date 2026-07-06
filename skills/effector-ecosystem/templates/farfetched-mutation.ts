@@ -1,3 +1,4 @@
+import { createEvent, sample } from 'effector';
 import { createJsonMutation, declareParams, concurrency } from '@farfetched/core';
 import { apiUrl } from '@/shared/api/base-url';
 import { mapRemoteError } from '@/shared/api/errors';
@@ -9,6 +10,8 @@ export type UpdateResourceParams = {
     name: string;
   };
 };
+
+export const updateResourceSubmitted = createEvent<UpdateResourceParams>();
 
 export const updateResourceMutation = createJsonMutation({
   params: declareParams<UpdateResourceParams>(),
@@ -25,5 +28,14 @@ export const updateResourceMutation = createJsonMutation({
   },
 });
 
-// Prevent accidental duplicate submits while one mutation is already running.
-concurrency(updateResourceMutation, { strategy: 'TAKE_FIRST' });
+// Submit de-duplication belongs to the Effector model, not hidden in UI or `.watch`.
+// Keep Farfetched concurrency permissive unless the project intentionally tests skipped/aborted lifecycle.
+concurrency(updateResourceMutation, { strategy: 'TAKE_EVERY' });
+
+sample({
+  clock: updateResourceSubmitted,
+  source: updateResourceMutation.$pending,
+  filter: (pending) => !pending,
+  fn: (_pending, params) => params,
+  target: updateResourceMutation.start,
+});
