@@ -60,7 +60,20 @@ Avoid deprecated or legacy bindings (`useStore`, `useEvent`, HOCs) in new code u
 
 Use for Next.js applications where Effector Scope, SSR, serialization, and hydration need first-class integration.
 
-Do not add it to plain Vite/SPA projects.
+Use it when:
+
+- App Router or Pages Router renders Effector-backed data on the server
+- server-side page events are run through `fork`/`allSettled`
+- serialized Scope values must be passed to client components
+- Client Components need bound events/effects through `useUnit`
+
+Rules:
+
+- enable Effector Babel/SWC plugin for stable SIDs
+- create a fresh Scope per server request/page computation
+- pass `serialize(scope)` to `EffectorNext`
+- keep Next router integration in an adapter model, not inside features
+- do not add it to plain Vite/SPA projects
 
 ### `@effector/reflect`
 
@@ -166,7 +179,13 @@ Use when routes are part of Effector architecture:
 
 Put route declarations in `shared/routes` or slice `route.ts` depending on ownership. Route-specific orchestration belongs to the page model, not the UI.
 
-Use Farfetched integration when a query is the `chainRoute` loader.
+Use Farfetched integration when a query is the `chainRoute` loader. Add `@farfetched/atomic-router` for query-driven route loading:
+
+- `startChain(query)` for unconditional load before route open
+- `freshChain(query)` for cache/stale-aware route open
+- `barrierChain(barrier)` when route opening must wait for a Farfetched barrier
+
+If route params and query params differ, map them in the page model or use a page-specific query shape; do not map route params in React.
 
 ## Persistence
 
@@ -299,6 +318,6 @@ Community package factories are usually recognized by the plugin, but local fact
 - i18n as app state: `@withease/i18next`
 - Browser signals: `@withease/web-api`
 - Reusable model instances: `@withease/factories`
-- Next.js SSR: `@effector/next` + plugin/SIDs
+- Next.js SSR/App Router: `@effector/next` + per-request Scope + plugin/SIDs
 - FSD linting: Steiger
 - Effector linting: `eslint-plugin-effector`

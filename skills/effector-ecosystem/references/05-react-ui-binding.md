@@ -231,3 +231,20 @@ const { onSubmit, onSearchChange } = useUnit({
 ```
 
 Public `$$model` shapes should expose the same aliases, so JSX never destructures event fact names as callbacks.
+
+## Next.js Client Components
+
+In Next.js App Router, any component that uses `useUnit` or other React hooks must be a Client Component:
+
+```tsx
+'use client';
+
+import { useUnit } from 'effector-react';
+
+export function SaveButton() {
+  const { onSubmit } = useUnit({ onSubmit: submitted });
+  return <button onClick={() => onSubmit()}>Save</button>;
+}
+```
+
+Server Components should create Scope, run `allSettled`, serialize values, and render Client Components. They should not call `useUnit`.

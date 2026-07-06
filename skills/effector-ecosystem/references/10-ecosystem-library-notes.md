@@ -25,7 +25,9 @@ This file summarizes the practical rules for each common Effector ecosystem libr
 
 ## Effector
 
-Use Effector for static, declarative business models. Default to `sample`, atomic stores, derived view models, and tests with `fork`/`allSettled`.
+Use Effector for static, declarative business models. Default to `sample`, atomic stores, derived view models, explicit lifecycle events, and tests with `fork`/`allSettled`.
+
+Use one explicit app/page startup event (`appStarted`, `pageStarted`) and connect startup work through `sample`. Avoid hidden imperative helper chains except for clearly documented external adapter installation. Use `scopeBind` for callbacks that leave Effector's call stack and later re-enter a Scope.
 
 Avoid `watch` for behavior, `getState` for production logic, units in render, and imperative event calls inside effects.
 
@@ -54,7 +56,18 @@ Use arrays for small local bindings, object shapes for public model APIs. In bot
 
 ## @effector/next
 
-Use for Next.js SSR/hydration with Effector Scope. Enable Effector plugin for SIDs and bind all component event/effect handlers through `useUnit`.
+Use for Next.js SSR/hydration with Effector Scope.
+
+Rules:
+
+- enable Effector plugin for SIDs
+- create a fresh Scope per server request/page computation
+- run server model events with `allSettled(event, { scope, params })`
+- pass `serialize(scope)` values to `EffectorNext`
+- bind Client Component handlers through `useUnit`
+- keep Next router integration in an adapter model
+- use `scope.getState` only at framework boundaries such as `notFound`, `redirect`, `generateMetadata`, or `generateStaticParams`
+- avoid global server Scope and layout decisions that depend on page-loaded stores in App Router
 
 ## @effector/reflect
 
@@ -72,7 +85,11 @@ Checklist:
 - `mapData` maps DTO to domain shape
 - `mapError` normalizes errors
 - `concurrency(operation, { strategy })` is an operator
-- `keepFresh`, `cache`, `.refresh`, `update`, barriers are used deliberately
+- `request.fetch.credentials` is used for cookie/session APIs in current Farfetched code
+- `keepFresh` is used only after first query start is modeled
+- `cache`, `.refresh`, `update`, barriers are used deliberately
+- `createBarrier`/`applyBarrier` centralize auth refresh or unavailable-resource gates
+- `@farfetched/atomic-router` provides `startChain`, `freshChain`, and `barrierChain` for route loaders
 
 ## @withease/contracts
 
@@ -107,14 +124,18 @@ Rules:
 
 ## atomic-router
 
-Use for typed routes, route lifecycle, guards, and route-driven data loading.
+Use for typed routes, route lifecycle, guards, redirects, and route-driven data loading.
 
 Patterns:
 
 - `createRoute` for route units
-- `chainRoute` for data/permission gating
+- `chainRoute` for data/permission/auth gating
+- protected routes as model composition, not JSX-only wrappers
 - `RouterProvider`/framework integration at app level
 - Farfetched integration for query-driven route loading
+- route-param mapping in page/app models, not UI
+
+Atomic Router APIs have historically evolved; check current docs before writing version-specific helper types.
 
 ## effector-storage
 
@@ -149,3 +170,5 @@ Use for automated FSD structure and import checks. Treat exceptions as architect
 ## Effector Babel/SWC plugin
 
 Use for SIDs, SSR, debugging, HMR, and factories. Configure local model factories; do not rely on luck for stable serialization.
+
+In Next.js, verify the plugin field supported by the installed Next version and include local factories plus ecosystem factories when required, for example Atomic Router or `@withease/factories`.
