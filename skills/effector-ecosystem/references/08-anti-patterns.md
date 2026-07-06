@@ -285,3 +285,138 @@ Use `contract` and explicit `pickup` when scopes are used.
 ### Persisting secrets by default
 
 Do not store tokens in localStorage/sessionStorage unless the security model explicitly accepts the risk.
+
+## Routing and startup anti-patterns
+
+### Free-floating scoped bootstrap sequence
+
+```ts
+await startAppClock(scope);
+await allSettled(appStarted, { scope });
+await startRouter(scope);
+```
+
+This is a red flag unless `startAppClock` and `startRouter` are documented external adapter installation boundaries. Prefer one explicit `appStarted` event and declarative connections:
+
+```ts
+await allSettled(appStarted, { scope, params: startParams });
+
+sample({ clock: appStarted, target: appClockStartedFx });
+sample({ clock: appStarted, target: routerStartedFx });
+sample({ clock: routerStartedFx.doneData, target: initialRouteResolved });
+```
+
+### Route data loading in React effect
+
+```tsx
+useEffect(() => {
+  userQuery.start({ id: params.id });
+}, [params.id]);
+```
+
+Start from route events, `chainRoute`, Farfetched route integration, or `pageStarted`.
+
+### Protected route as JSX wrapper only
+
+```tsx
+return isAuthenticated ? children : <Navigate to="/login" />;
+```
+
+This may be acceptable as a tiny presentation fallback, but it must not be the only business guard. Put auth restoration, loaded route opening, cancellation, and redirects into the routing model.
+
+## Farfetched-specific anti-patterns
+
+### Top-level `credentials`
+
+```ts
+createJsonQuery({
+  request: { method: 'GET', url: '/me' },
+  credentials: 'include',
+});
+```
+
+Use `request.fetch.credentials` in new Farfetched code:
+
+```ts
+request: {
+  method: 'GET',
+  url: '/me',
+  fetch: { credentials: 'include' },
+}
+```
+
+### Body in GET/HEAD request
+
+```ts
+request: {
+  method: 'GET',
+  url: '/search',
+  body: ({ query }) => ({ query }),
+}
+```
+
+Use `query` for URL search params.
+
+### `keepFresh` before first start
+
+```ts
+keepFresh(userQuery, { triggers: [appStarted] });
+```
+
+This is incomplete if the query has never received params. Trigger the first `start` from route/app/page model, then use `keepFresh` for revalidation.
+
+### Shared auth barrier performs navigation
+
+```ts
+// shared/api/auth-barrier.ts
+refreshSessionMutation.finished.failure.watch(() => loginRoute.open());
+```
+
+Shared API infrastructure should emit session/auth facts. App/page routing decides navigation.
+
+## Next.js anti-patterns
+
+### Global server Scope
+
+```ts
+// bad
+export const serverScope = fork();
+```
+
+Create a fresh Scope per request/page computation.
+
+### Missing plugin/SIDs with SSR
+
+Do not rely on SSR serialization without stable SIDs from the Effector Babel/SWC plugin.
+
+### Raw event in Client Component
+
+```tsx
+'use client';
+
+<button onClick={() => submitted()}>Save</button>
+```
+
+Use `useUnit`:
+
+```tsx
+const { onSubmit } = useUnit({ onSubmit: submitted });
+<button onClick={() => onSubmit()}>Save</button>
+```
+
+### Effector hook in Server Component
+
+```tsx
+// missing 'use client'
+const user = useUnit($user);
+```
+
+Hooks belong to Client Components. Server Components can create Scope, run `allSettled`, serialize values, and render Client Components.
+
+### App Router layout depends on page-loaded store
+
+A parent layout should not assume it can read stores filled by a deeper page Server Component during the same server render. Load layout-critical data at the layout boundary or move the decision to the page.
+
+### `serialize: 'ignore'` as a lazy fix
+
+Do not silence serialization problems by ignoring stores that must hydrate. Use explicit store design or custom serialization for non-serializable values.

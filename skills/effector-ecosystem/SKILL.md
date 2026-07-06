@@ -38,6 +38,7 @@ Use this skill when the user asks about:
 - Refactoring from component-local logic into Effector models
 - Reviewing code for architecture violations
 - Creating templates for slices, models, API, forms, routing, persistence, or tests
+- Next.js App Router, Pages Router, SSR, hydration, or `@effector/next` integration
 
 ## First response behavior
 
@@ -158,13 +159,38 @@ Use Farfetched for backend communication:
 - `response.contract` for runtime validation
 - `mapData` to map DTOs after validation
 - `mapError` to normalize transport/validation/domain errors
-- `concurrency` operator for search, filters, and fast-changing requests
+- `concurrency` operator for search, filters, submits, route changes, and cancellation
 - `createBarrier` + `applyBarrier` for auth refresh or unavailable-resource flows
 - `keepFresh`, `cache`, `.refresh`, and `update` for refresh/cache semantics when appropriate
+- `request.fetch.credentials` for cookie/session APIs in current Farfetched code
+- `@farfetched/atomic-router` for query-driven route loading when Atomic Router is used
 
 Never trust backend data without a contract.
 
-### 5. FSD boundaries must be explicit
+### 5. Application startup must be explicit and scoped
+
+Prefer one application event such as `appStarted` and one page/route event such as `pageStarted` over several free-floating startup functions.
+
+Default pattern:
+
+```ts
+const scope = fork();
+await allSettled(appStarted, { scope, params: startParams });
+```
+
+Connect storage pickup, i18n, router start, initial queries, and browser integrations from that event with `sample` or effects. Avoid sequences like this by default:
+
+```ts
+await startAppClock(scope);
+await allSettled(appStarted, { scope });
+await startRouter(scope);
+```
+
+That sequence is allowed only when `startAppClock`/`startRouter` are explicitly documented external adapter installation steps. Even then, business decisions should still be triggered from `appStarted`, route events, or scope-bound callbacks.
+
+Use `allSettled(scope)` only when you intentionally need to wait for already-started async work that was triggered outside the direct `allSettled(event, { scope })` call, for example by a `scopeBind` callback from a timer, SDK, history listener, or WebSocket.
+
+### 6. FSD boundaries must be explicit
 
 Use layers:
 
@@ -180,7 +206,7 @@ External code must import from slice public API, not internal files.
 
 Inside a slice, use relative imports. Between slices, use absolute imports.
 
-### 6. Packages are chosen by purpose
+### 7. Packages are chosen by purpose
 
 Do not add packages because they are popular. Choose them when they solve a specific architectural problem.
 
@@ -306,6 +332,7 @@ export const fx = createEffect();
 
 Before giving a detailed answer, consult the relevant files:
 
+- `references/00-source-policy.md`
 - `references/01-package-map.md`
 - `references/02-fsd-placement.md`
 - `references/03-effector-modeling.md`
@@ -316,6 +343,7 @@ Before giving a detailed answer, consult the relevant files:
 - `references/08-anti-patterns.md`
 - `references/09-review-checklist.md`
 - `references/10-ecosystem-library-notes.md`
+- `references/11-nextjs.md`
 
 ## Default answer style
 

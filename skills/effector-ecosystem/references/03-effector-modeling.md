@@ -11,6 +11,7 @@ Use this file when designing or reviewing Effector models.
 - Transformation functions
 - Effects
 - `attach`
+- Explicit app/page startup
 - `scopeBind`
 - Branching
 - Patronum
@@ -180,6 +181,86 @@ const requestWithTokenFx = attach({
 
 This avoids `getState()` and keeps dependencies explicit.
 
+
+## Explicit app/page startup
+
+Effector apps should have explicit lifecycle facts. Do not rely on module side effects or random React `useEffect` calls for startup.
+
+Default app startup:
+
+```ts
+export type AppStartParams = {
+  initialUrl?: string;
+  locale?: string;
+};
+
+export const appStarted = createEvent<AppStartParams>();
+export const appDestroyed = createEvent();
+
+sample({ clock: appStarted, target: storagePickupStarted });
+sample({ clock: appStarted, target: i18nStarted });
+sample({ clock: appStarted, target: browserIntegrationsStartedFx });
+```
+
+Default page/server startup:
+
+```ts
+export const pageStarted = createEvent<{ userId: string }>();
+
+sample({
+  clock: pageStarted,
+  fn: ({ userId }) => ({ id: userId }),
+  target: userQuery.start,
+});
+```
+
+Scoped execution:
+
+```ts
+const scope = fork();
+await allSettled(appStarted, { scope, params: startParams });
+await allSettled(pageStarted, { scope, params: { userId } });
+```
+
+Avoid this pattern by default:
+
+```ts
+await startAppClock(scope);
+await allSettled(appStarted, { scope });
+await startRouter(scope);
+```
+
+Why it is dangerous:
+
+- the real order is outside the model graph;
+- tests must duplicate hidden imperative startup;
+- SSR/Scope bugs become likely because external callbacks may fire outside the intended Scope;
+- route, storage, and initial query behavior is harder to review.
+
+Preferred rewrite:
+
+```ts
+export const appStarted = createEvent<AppStartParams>();
+
+sample({ clock: appStarted, target: appClockStartedFx });
+sample({ clock: appStarted, target: routerStartedFx });
+sample({ clock: routerStartedFx.doneData, target: initialRouteResolved });
+sample({ clock: initialRouteResolved, target: routeOpened });
+```
+
+Exception: external adapters can require imperative installation. For example, a history listener, SDK callback, or timer may have to be registered before the first navigation event. Make that adapter boundary explicit and use `scopeBind` for callbacks that fire later:
+
+```ts
+export const installHistoryFx = createEffect((history: History) => {
+  const routeChanged = scopeBind(routeChangedFromHistory);
+  return history.listen((location) => routeChanged(location));
+});
+
+sample({ clock: appStarted, fn: ({ history }) => history, target: installHistoryFx });
+```
+
+Use `allSettled(scope)` only when work was already launched by external scope-bound callbacks and you need to wait until the Scope becomes idle. For ordinary app start, prefer `allSettled(appStarted, { scope, params })` because it both triggers the event in the Scope and waits for effects caused by that event.
+
 ## `scopeBind`
 
 Use `scopeBind` for callbacks that leave Effector's synchronous call stack and still need to target the current Scope:
@@ -190,6 +271,8 @@ Use `scopeBind` for callbacks that leave Effector's synchronous call stack and s
 - timers created inside scoped initialization
 
 Do not use `scopeBind` as a replacement for `useUnit` in React components.
+
+Scope loss is common in callbacks registered with external libraries: Next router events, browser history, WebSocket messages, timers, SDK subscriptions, and custom event emitters. Bind once at adapter installation time and keep the rest of the workflow inside Effector units.
 
 ## Branching
 

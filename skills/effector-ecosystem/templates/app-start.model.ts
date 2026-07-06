@@ -1,0 +1,26 @@
+import { createEffect, createEvent, sample } from 'effector';
+
+export type AppStartParams = {
+  initialUrl?: string;
+  locale?: string;
+};
+
+export const appStarted = createEvent<AppStartParams>();
+export const appDestroyed = createEvent();
+
+export const storagePickupStarted = createEvent<AppStartParams>();
+export const i18nStarted = createEvent<AppStartParams>();
+export const initialRouteResolved = createEvent<string | undefined>();
+
+const browserIntegrationsStartedFx = createEffect<AppStartParams, void>();
+const routerStartedFx = createEffect<AppStartParams, string | undefined>();
+
+sample({ clock: appStarted, target: storagePickupStarted });
+sample({ clock: appStarted, target: i18nStarted });
+sample({ clock: appStarted, target: browserIntegrationsStartedFx });
+sample({ clock: appStarted, target: routerStartedFx });
+sample({ clock: routerStartedFx.doneData, target: initialRouteResolved });
+
+// Runtime/test usage:
+// const scope = fork();
+// await allSettled(appStarted, { scope, params: { initialUrl: location.href } });
