@@ -8,6 +8,7 @@ Use this file when designing or reviewing Effector models.
 - Unit choice
 - Data flow with `sample`
 - Store rules
+- Transformation functions
 - Effects
 - `attach`
 - `scopeBind`
@@ -79,7 +80,7 @@ Rules:
 - `clock` answers “when”
 - `source` answers “with which current data”
 - `filter` answers “should it continue”
-- `fn` maps data and must be pure
+- `fn` maps data and must be pure; extract non-trivial mapping to a named function
 - `target` is the next fact/operation
 
 Prefer `sample` over `$store.getState()`, `watch`, and imperative event calls.
@@ -108,6 +109,38 @@ export const $vm = combine({
 Derived stores are read-only in architecture. Do not use derived stores as `target` or attach `.on`/`.reset` to them after derivation.
 
 Effector treats `undefined` specially in stores. Do not return `undefined` from reducers unless `skipVoid: false` is intentional and documented.
+
+## Transformation functions
+
+Keep reactive operators declarative. Use `combine`, `sample.fn`, and store `.map` to connect data and call pure functions, not to hold long algorithms inline.
+
+Inline is fine for tiny transformations:
+
+```ts
+export const $canSubmit = combine($name, $email, (name, email) => Boolean(name && email));
+```
+
+Extract when transformation has real logic:
+
+```ts
+// model/profile.vm.ts
+export const toProfileVm = (user: User, permissions: Permissions) => ({
+  name: user.name,
+  canEdit: permissions.includes('profile:update'),
+});
+
+// model/profile.model.ts
+export const $profileVm = combine($user, $permissions, toProfileVm);
+```
+
+Placement defaults:
+
+- DTO-to-domain mapping: use Farfetched `mapData`, API mapping files, or entity `lib`
+- domain calculations: put pure functions in the owning entity/feature `lib`
+- view models derived from stores: keep `$vm` in the model, but put non-trivial mapper functions next to it or in `lib`
+- UI-only formatting such as localized strings, dates, and currency labels: keep at the UI/presentation boundary
+
+Do not move business/domain transformation into React just to keep the model short. The model should orchestrate the transformation; the algorithm should be a named pure function.
 
 ## Effects
 

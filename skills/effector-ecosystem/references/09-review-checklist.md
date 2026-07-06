@@ -24,6 +24,8 @@ Use this checklist when reviewing code.
 - Is `$store.getState()` absent from production logic?
 - Is `attach` used instead of reading stores inside effects when needed?
 - Are stores atomic enough?
+- Are non-trivial transformations extracted from `combine`, `sample.fn`, and store `.map` into named pure functions?
+- Are DTO mapping, domain calculations, and UI-only formatting placed at the right ownership boundary?
 - Are derived stores not used as targets?
 - Are reducers not accidentally returning `undefined`?
 - Is complex branching readable (`sample`/`split`/`effector-action`)?

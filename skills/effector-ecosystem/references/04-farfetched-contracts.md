@@ -119,6 +119,15 @@ response: {
 }
 ```
 
+If DTO mapping is more than a trivial field rename, extract it to a named pure function in the API mapping file or owning entity/feature `lib`, then call it from `mapData`.
+
+```ts
+response: {
+  contract: UserDtoContract,
+  mapData: ({ result }) => mapUserDto(result),
+}
+```
+
 Do not replace validation with type assertions:
 
 ```ts

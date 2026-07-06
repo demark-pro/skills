@@ -124,6 +124,7 @@ Use:
 - `sample` as the main connection operator
 - `combine` for view models
 - `split` or `effector-action` for complex branching when it improves readability
+- named pure functions for non-trivial data transformation used by `combine`, `sample.fn`, or store `.map`
 - `patronum` for common operators like debounce, throttle, reset, status, pending helpers
 - factories for repeated same-shaped model logic that needs independent instances
 - `scopeBind` for callbacks that leave Effector's call stack and must still work inside a Scope
@@ -136,11 +137,14 @@ Avoid:
 - `$store.getState()` for production logic
 - creating models from React components
 - using derived stores as mutation targets
+- long inline mapping, sorting, grouping, normalization, or formatting inside `combine`, `sample.fn`, or store `.map`
 - returning `undefined` from store reducers unless `skipVoid: false` is intentional
 - oversized models that own several unrelated workflows at once
 - huge object stores when several atomic stores are clearer
 
 Prefer concern-based submodels over large all-in-one models. When a model grows into several workflows, split it into submodels such as `$$form`, `$$filters`, `$$list`, `$$selection`, or `$$dialog`; keep each submodel responsible for its own state and local rules. The top-level model should stay thin and orchestrate interactions between submodels with `sample` and other declarative connections.
+
+Keep Effector models declarative by extracting non-trivial data transformation to named pure functions. Small boolean checks or simple field joins can stay inline; complex mapping, sorting, grouping, DTO normalization, permission-derived view models, or formatting should live in `lib`, API mapping files, entity/feature helpers, or a presentation boundary. The model should connect stores/events and call these functions, not hide algorithms inside reactive operators.
 
 Prefer factories over copy-pasted Effector model code for repeated forms, filters, widgets, or other independent instances with the same behavior. In SSR/Scope/SID-sensitive apps, use [`@withease/factories`](https://withease.effector.dev/factories/) and configure the Effector Babel/SWC plugin `factories` field; invoke factories at module top level, never during render.
 

@@ -144,6 +144,32 @@ model/page.model.ts
 
 The top-level model should orchestrate submodels with `sample` and expose a clear public shape. Each submodel should own its local state and rules.
 
+### Long inline transformations in reactive operators
+
+Do not hide complex mapping, sorting, grouping, normalization, or formatting inside `combine`, `sample.fn`, or store `.map`.
+
+```ts
+// bad
+export const $rows = combine($users, $permissions, (users, permissions) =>
+  users
+    .filter((user) => permissions[user.id]?.canView)
+    .sort((left, right) => left.name.localeCompare(right.name))
+    .map((user) => ({
+      id: user.id,
+      title: `${user.name} (${user.role})`,
+      canEdit: permissions[user.id]?.canEdit ?? false,
+    })),
+);
+```
+
+Use a named pure function and let the model stay declarative:
+
+```ts
+export const $rows = combine($users, $permissions, toUserRows);
+```
+
+Put DTO mapping near `mapData`/API/entity `lib`, domain calculations in the owning slice `lib`, and UI-only formatting at the presentation boundary.
+
 ## Farfetched anti-patterns
 
 ### Fetch effects for HTTP endpoints
