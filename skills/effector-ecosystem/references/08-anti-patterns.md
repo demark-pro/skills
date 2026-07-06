@@ -204,6 +204,29 @@ Use the operator:
 concurrency(query, { strategy: 'TAKE_LATEST' });
 ```
 
+### Blind `TAKE_FIRST` for submits
+
+```ts
+// fragile default: duplicate-click policy is hidden inside remote-operation concurrency
+concurrency(saveMutation, { strategy: 'TAKE_FIRST' });
+```
+
+Prefer a visible feature/page-level gate:
+
+```ts
+concurrency(saveMutation, { strategy: 'TAKE_EVERY' });
+
+sample({
+  clock: formSubmitted,
+  source: saveMutation.$pending,
+  filter: (pending) => !pending,
+  fn: (_pending, values) => values,
+  target: saveMutation.start,
+});
+```
+
+Use `TAKE_FIRST` only after testing skipped lifecycle and `$pending` reset in the same Scope/browser setup the project uses.
+
 ### Blind optimistic update
 
 Do not patch cached lists if backend sorting/filtering/permissions can change visibility.
@@ -296,7 +319,7 @@ await allSettled(appStarted, { scope });
 await startRouter(scope);
 ```
 
-This is a red flag unless `startAppClock` and `startRouter` are documented external adapter installation boundaries. Prefer one explicit `appStarted` event and declarative connections:
+This is wrong by default. Do not normalize it as “just bootstrap code”. Prefer one explicit `appStarted` event and declarative connections. Move router/clock/history installation into scoped effects started by `appStarted` whenever possible:
 
 ```ts
 await allSettled(appStarted, { scope, params: startParams });

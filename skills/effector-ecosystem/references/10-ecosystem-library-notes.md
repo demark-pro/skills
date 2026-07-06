@@ -27,7 +27,7 @@ This file summarizes the practical rules for each common Effector ecosystem libr
 
 Use Effector for static, declarative business models. Default to `sample`, atomic stores, derived view models, explicit lifecycle events, and tests with `fork`/`allSettled`.
 
-Use one explicit app/page startup event (`appStarted`, `pageStarted`) and connect startup work through `sample`. Avoid hidden imperative helper chains except for clearly documented external adapter installation. Use `scopeBind` for callbacks that leave Effector's call stack and later re-enter a Scope.
+Use one explicit app/page startup event (`appStarted`, `pageStarted`) and connect startup work through `sample`. Avoid hidden imperative helper chains; first model router/history/clock/browser integration setup as effects started from `appStarted`. Keep free-floating startup helpers only for documented last-resort host adapter installation. Use `scopeBind` for callbacks that leave Effector's call stack and later re-enter a Scope.
 
 Avoid `watch` for behavior, `getState` for production logic, units in render, and imperative event calls inside effects.
 
@@ -83,8 +83,9 @@ Checklist:
 - request object owns method/url/query/body/headers
 - `response.contract` validates unknown data
 - `mapData` maps DTO to domain shape
-- `mapError` normalizes errors
+- `mapError` normalizes errors and uses the current object argument shape, for example `mapError: ({ error, params, headers }) => ...`
 - `concurrency(operation, { strategy })` is an operator
+- submit de-duplication defaults to an explicit Effector `$pending` gate plus `TAKE_EVERY`; use `TAKE_FIRST` only when skipped lifecycle is intentional and tested
 - `request.fetch.credentials` is used for cookie/session APIs in current Farfetched code
 - `keepFresh` is used only after first query start is modeled
 - `cache`, `.refresh`, `update`, barriers are used deliberately

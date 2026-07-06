@@ -2,16 +2,6 @@
 
 Use this checklist when reviewing code.
 
-## Contents
-
-- FSD
-- Effector
-- Farfetched/contracts
-- React
-- Routing/forms/persistence/i18n
-- Packages/tooling
-- Red flags
-
 ## FSD
 
 - Does each slice have public API?
@@ -46,7 +36,8 @@ Use this checklist when reviewing code.
 - Are factories invoked only at module top level?
 - Is app/page startup represented by explicit events such as `appStarted`/`pageStarted`?
 - Is scoped startup executed through `allSettled(event, { scope, params })` instead of hidden helper chains?
-- If startup helpers such as `startRouter(scope)` exist, are they documented adapter boundaries rather than business workflow?
+- If startup helpers such as `startRouter(scope)` exist, has the reviewer first tried to move them into effects started from `appStarted`?
+- If a free-floating startup helper remains, is it a documented last-resort host adapter boundary rather than business workflow?
 - Are external callbacks registered with `scopeBind` or scope-aware adapters?
 
 ## Farfetched/contracts
@@ -57,6 +48,7 @@ Use this checklist when reviewing code.
 - Are errors normalized before UI consumes them?
 - Is query/mutation placed at the correct FSD layer?
 - Is concurrency strategy intentional and applied through the operator?
+- For submits, is duplicate-click protection an explicit `$pending` gate in the feature/page model, unless `TAKE_FIRST` is justified and tested?
 - Is `.refresh`, `keepFresh`, cache, or update strategy correct?
 - If `keepFresh` is used, has the query been started at least once with valid params?
 - Is `request.fetch.credentials` used for cookie/session APIs in current Farfetched code?

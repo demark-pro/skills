@@ -24,3 +24,7 @@ sample({ clock: routerStartedFx.doneData, target: initialRouteResolved });
 // Runtime/test usage:
 // const scope = fork();
 // await allSettled(appStarted, { scope, params: { initialUrl: location.href } });
+
+// Review rule: do not add a free-floating `startRouter(scope)` / `startAppClock(scope)`
+// sequence for ordinary startup. Add router/history/clock installation as effects
+// sampled from `appStarted`; use external helpers only for documented host adapter wiring.

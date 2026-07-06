@@ -70,7 +70,7 @@ await allSettled(pageStarted, {
 expect(scope.getState(userQuery.$data)).toEqual(expectedUser);
 ```
 
-Do not duplicate runtime bootstrapping in tests as a chain of helper calls such as `startAppClock -> appStarted -> startRouter`. If such helpers are true adapter installation boundaries, mock or install them explicitly and still trigger business logic through `appStarted`/`pageStarted`.
+Do not duplicate runtime bootstrapping in tests as a chain of helper calls such as `startAppClock -> appStarted -> startRouter`. First try to model those helpers as effects started from `appStarted`; if a helper is an unavoidable host adapter boundary, mock/install it explicitly and still trigger business logic through `appStarted`/`pageStarted`.
 
 Use `allSettled(scope)` only to wait for already-started scope-bound external callbacks. Most tests should use `allSettled(unit, { scope, params })`.
 
@@ -83,8 +83,9 @@ Test these behaviors at the model level:
 - query/mutation is started with mapped params
 - success maps DTO to domain state
 - failure maps to project `RemoteError`
-- `TAKE_LATEST` cancels/replaces stale route/search requests
-- `TAKE_FIRST` blocks duplicate submit behavior where expected
+- `TAKE_LATEST` cancels/replaces stale route/search requests and resets `$pending` after abort/finish
+- submit de-duplication is implemented with an explicit `$pending` gate (`sample.filter`) unless the project has a tested reason to use `TAKE_FIRST`
+- if `TAKE_FIRST`/`TAKE_LATEST` is used for mutations, skipped/aborted lifecycle and browser-scoped `$pending` reset are covered by tests
 - auth barrier success resumes protected operations
 - auth barrier failure produces session/logout/redirect facts
 - `keepFresh` triggers refresh only after the query has been started once

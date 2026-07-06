@@ -1,6 +1,6 @@
 ---
 name: effector-ecosystem
-description: "Use when designing, reviewing, generating, or refactoring React frontend applications built with Feature-Sliced Design, effector, effector-react, Farfetched, contracts, patronum, atomic-router, effector-storage, forms, i18n, testing, Next.js SSR/hydration, and related tooling. Explains where code belongs, which packages to use, and which Effector/FSD anti-patterns to avoid."
+description: "Use when designing, reviewing, generating, or refactoring React frontend applications built with Feature-Sliced Design, effector, effector-react, Farfetched, contracts, patronum, atomic-router, effector-storage, forms, i18n, testing, and related tooling. Explains where code belongs, which packages to use, and which Effector/FSD anti-patterns to avoid."
 license: MIT
 ---
 
@@ -158,8 +158,8 @@ Use Farfetched for backend communication:
 - `declareParams<T>()` for typed params
 - `response.contract` for runtime validation
 - `mapData` to map DTOs after validation
-- `mapError` to normalize transport/validation/domain errors
-- `concurrency` operator for search, filters, submits, route changes, and cancellation
+- `mapError: ({ error }) => ...` to normalize transport/validation/domain errors with the current Farfetched object-argument shape
+- `concurrency` operator for route/search/filter cancellation; for submit de-duplication prefer an explicit Effector `$pending` gate and choose Farfetched concurrency cautiously
 - `createBarrier` + `applyBarrier` for auth refresh or unavailable-resource flows
 - `keepFresh`, `cache`, `.refresh`, and `update` for refresh/cache semantics when appropriate
 - `request.fetch.credentials` for cookie/session APIs in current Farfetched code
@@ -186,7 +186,7 @@ await allSettled(appStarted, { scope });
 await startRouter(scope);
 ```
 
-That sequence is allowed only when `startAppClock`/`startRouter` are explicitly documented external adapter installation steps. Even then, business decisions should still be triggered from `appStarted`, route events, or scope-bound callbacks.
+Treat that sequence as wrong by default. Prefer modeling adapter installation as effects started from `appStarted` (`sample({ clock: appStarted, target: routerStartedFx })`). Keep free-floating `startAppClock(scope)` / `startRouter(scope)` only as a documented last-resort host wiring boundary that cannot be expressed as a scoped effect before the first callback fires. Business decisions must still be triggered from `appStarted`, route events, or scope-bound callbacks.
 
 Use `allSettled(scope)` only when you intentionally need to wait for already-started async work that was triggered outside the direct `allSettled(event, { scope })` call, for example by a `scopeBind` callback from a timer, SDK, history listener, or WebSocket.
 

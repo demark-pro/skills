@@ -201,7 +201,7 @@ await allSettled(appStarted, { scope });
 await startRouter(scope);
 ```
 
-Use external startup helpers only for adapter installation and document them as such.
+Do not use external startup helpers for ordinary app workflow. Model router/session/storage startup as effects started from `appStarted`; keep external helpers only for documented last-resort host adapter installation.
 
 ## Protected route helper
 

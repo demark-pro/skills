@@ -248,7 +248,9 @@ sample({ clock: routerStartedFx.doneData, target: initialRouteResolved });
 sample({ clock: initialRouteResolved, target: routeOpened });
 ```
 
-Exception: external adapters can require imperative installation. For example, a history listener, SDK callback, or timer may have to be registered before the first navigation event. Make that adapter boundary explicit and use `scopeBind` for callbacks that fire later:
+Default: move adapter installation into effects started from `appStarted`. External adapters such as history listeners, SDK callbacks, timers, WebSocket subscriptions, or browser integration setup should be represented as scoped effects whenever possible.
+
+Last-resort exception: an adapter may require imperative host wiring before the first Effector event can be triggered. Make that boundary explicit in the file name/comment/test setup, keep it infrastructure-only, and use `scopeBind` for callbacks that fire later:
 
 ```ts
 export const installHistoryFx = createEffect((history: History) => {

@@ -330,7 +330,7 @@ sample({ clock: appStarted, target: routerStartedFx });
 sample({ clock: routerStartedFx.done, target: initialRouteResolved });
 ```
 
-Exception: an external adapter may need imperative installation before the first event, for example attaching a history listener or SDK callback. In that case, make the exception explicit, use `scopeBind` for callbacks that fire later, and keep business decisions behind `appStarted`/route events.
+Default: represent router/history/clock/browser integration setup as scoped effects started from `appStarted`. Last-resort exception: an external adapter may need imperative host wiring before the first event, for example attaching a history listener or SDK callback. In that case, make the exception explicit, use `scopeBind` for callbacks that fire later, and keep business decisions behind `appStarted`/route events.
 
 ## Caveats
 

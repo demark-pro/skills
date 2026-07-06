@@ -350,7 +350,7 @@ const scope = fork();
 await allSettled(appStarted, { scope, params: startParams });
 ```
 
-Avoid free-floating sequences unless they are documented external adapter installation boundaries:
+Avoid free-floating sequences by default. First move router/history/clock/browser integration setup into effects started by `appStarted`. Leave a free-floating startup helper only when it is a documented last-resort host adapter boundary:
 
 ```ts
 await startAppClock(scope);
