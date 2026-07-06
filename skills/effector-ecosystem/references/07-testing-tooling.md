@@ -3,6 +3,8 @@
 ## Contents
 
 - Testing Effector models
+- Testing app/page startup
+- Testing Farfetched flows
 - UI tests
 - Scope/SSR checks
 - ESLint
@@ -31,7 +33,74 @@ await allSettled(formSubmitted, { scope });
 expect(scope.getState($isSubmitted)).toBe(true);
 ```
 
-For Farfetched, use current public testing recipes from Farfetched docs. Internals under `__` can change; avoid depending on them unless the docs for the installed version recommend it.
+Rules:
+
+- Trigger public events, not private helper units.
+- Assert public stores/domain events/route decisions.
+- Mock effect handlers through `fork({ handlers })` when testing non-HTTP effects.
+- Keep tests close to user-visible behavior, but do not render React to test pure model data flow.
+
+## Testing app/page startup
+
+Use the same startup event in tests that the runtime uses.
+
+```ts
+const scope = fork({
+  handlers: [[browserIntegrationsStartedFx, async () => undefined]],
+});
+
+await allSettled(appStarted, {
+  scope,
+  params: { initialUrl: '/users/1', locale: 'en' },
+});
+
+expect(scope.getState($locale)).toBe('en');
+```
+
+For page/server events:
+
+```ts
+const scope = fork();
+
+await allSettled(pageStarted, {
+  scope,
+  params: { userId: '1' },
+});
+
+expect(scope.getState(userQuery.$data)).toEqual(expectedUser);
+```
+
+Do not duplicate runtime bootstrapping in tests as a chain of helper calls such as `startAppClock -> appStarted -> startRouter`. If such helpers are true adapter installation boundaries, mock or install them explicitly and still trigger business logic through `appStarted`/`pageStarted`.
+
+Use `allSettled(scope)` only to wait for already-started scope-bound external callbacks. Most tests should use `allSettled(unit, { scope, params })`.
+
+## Testing Farfetched flows
+
+For Farfetched, use current public testing recipes from Farfetched docs for the installed version. Internals under `__` can change; avoid depending on them unless the docs for that exact version recommend it.
+
+Test these behaviors at the model level:
+
+- query/mutation is started with mapped params
+- success maps DTO to domain state
+- failure maps to project `RemoteError`
+- `TAKE_LATEST` cancels/replaces stale route/search requests
+- `TAKE_FIRST` blocks duplicate submit behavior where expected
+- auth barrier success resumes protected operations
+- auth barrier failure produces session/logout/redirect facts
+- `keepFresh` triggers refresh only after the query has been started once
+- mutation `update` is used only for safe cache patches; otherwise refresh is triggered
+
+Prefer tests around public events/stores:
+
+```ts
+await allSettled(userRoute.opened, {
+  scope,
+  params: { params: { userId: '1' }, query: {} },
+});
+
+expect(scope.getState(userQuery.$pending)).toBe(false);
+expect(scope.getState($userVm)).toEqual(expectedVm);
+```
 
 ## UI tests
 
@@ -45,15 +114,19 @@ Use `<Provider value={scope}>` in tests that need Scope.
 
 Do not test all business rules through React if they can be tested at model level.
 
+For connected components, assert that UI calls bound handler aliases from `useUnit`, not raw imported events.
+
 ## Scope/SSR checks
 
 When Scope is used:
 
 - events/effects passed to React handlers must be bound through `useUnit`
 - handler-like values returned from `useUnit` should use React-facing `on*` aliases
+- external callbacks must use `scopeBind` or a scope-aware adapter
 - persistence should use explicit `pickup`
 - stores that are serialized must have stable SIDs
-- app bootstrap should use `fork`, `serialize`, and hydration consistently
+- app bootstrap should use `fork`, `allSettled`, `serialize`, and hydration consistently
+- server code must create a fresh Scope per request/page computation
 
 ## ESLint
 
@@ -99,6 +172,8 @@ Avoid `any` for remote data. Unknown backend data must pass through contracts.
 
 Use `UnContract<typeof Contract>` or project-standard validator inference for DTO/domain types.
 
+Avoid exporting huge inferred object types from models. Public model shapes should be readable and stable.
+
 ## Build plugin
 
 Use `@effector/swc-plugin` or the Effector Babel plugin when the project needs:
@@ -109,7 +184,19 @@ Use `@effector/swc-plugin` or the Effector Babel plugin when the project needs:
 - better unit names/debugging
 - HMR support
 
-Configure local factories when using model factories. Community packages such as Patronum, Farfetched, Atomic Router, `effector-action`, and `@withease/factories` are commonly handled by plugin defaults, but local project factories still need explicit configuration.
+Configure local factories when using model factories. Community packages such as Patronum, Farfetched, Atomic Router, `effector-action`, and `@withease/factories` may be handled by plugin defaults or package metadata, but local project factories still need explicit configuration.
+
+For Atomic Router and With Ease factories, add them to `factories` when the current plugin docs/project setup requires it:
+
+```js
+['@effector/swc-plugin', {
+  factories: [
+    'atomic-router',
+    '@withease/factories',
+    '@/shared/lib/create-form-model',
+  ],
+}]
+```
 
 ## Next.js
 
@@ -118,10 +205,26 @@ Use `@effector/next` for Next.js integration when Scope/SSR/hydration is require
 Rules:
 
 - enable Effector Babel/SWC plugin for SIDs
-- avoid raw event/effect calls in components
+- create a fresh Scope per server request/page computation
+- run app/page model events with `allSettled(event, { scope, params })`
+- pass `serialize(scope)` to `EffectorNext`
+- avoid raw event/effect calls in Client Components
 - bind through `useUnit`
+- mark hook-using components with `'use client'`
 - serialize/hydrate only intended stores
 - keep server/client boundaries explicit
+- keep Next router in an adapter model if business logic needs client navigation
+
+Testing Next.js server logic:
+
+```ts
+const scope = fork();
+await allSettled(pageStarted, { scope, params: { userId: '1' } });
+const values = serialize(scope);
+expect(values).toMatchObject({});
+```
+
+Do not rely on a global server Scope, missing SIDs, or layout-level reads of page-loaded stores in App Router.
 
 ## CI review gates
 
@@ -133,3 +236,5 @@ At minimum, CI should run:
 - ESLint with Effector presets
 - FSD linting where Steiger is adopted
 - build with the same plugin configuration used in production
+- SSR/Next build smoke test when Next.js is used
+- architecture review checklist for Farfetched contracts/barriers/routes on changed slices

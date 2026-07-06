@@ -34,6 +34,10 @@ Use this checklist when reviewing code.
 - Is the top-level model mostly orchestration between submodels through `sample`/declarative connections?
 - Is repeated same-shaped model code extracted to factories instead of copy-pasted?
 - Are factories invoked only at module top level?
+- Is app/page startup represented by explicit events such as `appStarted`/`pageStarted`?
+- Is scoped startup executed through `allSettled(event, { scope, params })` instead of hidden helper chains?
+- If startup helpers such as `startRouter(scope)` exist, are they documented adapter boundaries rather than business workflow?
+- Are external callbacks registered with `scopeBind` or scope-aware adapters?
 
 ## Farfetched/contracts
 
@@ -44,8 +48,14 @@ Use this checklist when reviewing code.
 - Is query/mutation placed at the correct FSD layer?
 - Is concurrency strategy intentional and applied through the operator?
 - Is `.refresh`, `keepFresh`, cache, or update strategy correct?
+- If `keepFresh` is used, has the query been started at least once with valid params?
+- Is `request.fetch.credentials` used for cookie/session APIs in current Farfetched code?
+- Are `GET`/`HEAD` requests free of `body`?
+- Is `abortAll`/route-close cancellation considered for route/search requests?
 - Is blind optimistic update avoided for server-sorted/filtered data?
-- Is auth refresh centralized through barrier or shared API logic?
+- Is auth refresh centralized through `createBarrier`/`applyBarrier` or shared API logic?
+- Are shared barriers free of UI/router redirects?
+- Is `@farfetched/atomic-router` used where a query is truly the route loader, and are route params mapped outside React?
 
 ## React
 
@@ -64,6 +74,8 @@ Use this checklist when reviewing code.
 
 - Is route orchestration in model, not component effects?
 - Are route params typed?
+- Are protected routes handled by `chainRoute`/route models rather than JSX-only wrappers?
+- Are Farfetched route loaders using `startChain`/`freshChain` deliberately?
 - Are forms owned by feature/page models?
 - Are submit flows connected by `sample`?
 - Are persisted values safe and validated with contracts?
@@ -80,6 +92,10 @@ Use this checklist when reviewing code.
 - Is Steiger or another FSD boundary checker enabled when the team requires automation?
 - Are factory/SID requirements handled by Babel/SWC plugin, including the `factories` field for SSR?
 - Is `@effector/next` used for Next.js SSR/hydration instead of custom ad-hoc glue?
+- Is a fresh Scope created per Next.js request/page computation?
+- Is `serialize(scope)` passed to `EffectorNext` and are SIDs stable?
+- Are Client Components marked with `'use client'` when using Effector React hooks?
+- Is Next router navigation isolated in an adapter model?
 
 ## Red flags
 
@@ -96,3 +112,8 @@ Use this checklist when reviewing code.
 - multiple `useUnit` calls in one connected component without a render-granularity reason
 - raw event/effect calls from React components
 - persistence without validation/pickup in scoped apps
+- global server Scope in Next.js
+- route/page data loading from React `useEffect` instead of route/page model
+- `keepFresh` trigger without first query start
+- Farfetched top-level `credentials` in new code
+- shared API barrier that directly opens login routes

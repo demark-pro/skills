@@ -1,6 +1,19 @@
 # Source policy
 
+Last audited: 2026-07-06. Prefer current official docs for version-sensitive APIs.
+
 Prefer official documentation and package repositories. For version-specific APIs, check current docs before answering.
+
+
+## Version-sensitive checks
+
+Before giving code for these APIs, verify the installed/current docs when the answer depends on exact shape:
+
+- Farfetched `createJsonQuery`, `createJsonMutation`, `concurrency`, `keepFresh`, `cache`, `update`, `createBarrier`, `applyBarrier`, and `@farfetched/atomic-router`
+- Effector Scope APIs: `fork`, `allSettled`, `serialize`, `hydrate`, `scopeBind`
+- `@effector/next` App Router/Pages Router examples and caveats
+- Atomic Router `chainRoute`, protected routes, SSR support, and SWC plugin factory configuration
+- Effector Babel/SWC plugin `factories` configuration for local factories and ecosystem factories
 
 ## Primary sources
 
@@ -13,6 +26,12 @@ Prefer official documentation and package repositories. For version-specific API
 - Effector `sample`: https://effector.dev/en/api/effector/sample/
 - Effector Scope/Fork API: https://effector.dev/en/api/effector/fork/
 - Effector `scopeBind`: https://effector.dev/en/api/effector/scopeBind/
+- Effector explicit app start: https://effector.dev/en/guides/explicit-start/
+- Effector `allSettled`: https://effector.dev/en/api/effector/allSettled/
+- Effector `serialize`: https://effector.dev/en/api/effector/serialize/
+- Effector `hydrate`: https://effector.dev/en/api/effector/hydrate/
+- Next.js router recipe: https://effector.dev/en/recipes/nextjs/router/
+- Next.js `scopeBind` recipe: https://effector.dev/en/recipes/nextjs/scope-bind/
 - Effector Babel/SWC plugins: https://effector.dev/en/api/effector/swc-plugin/
 - `@effector/next`: https://github.com/effector/next
 
@@ -31,6 +50,14 @@ Prefer official documentation and package repositories. For version-specific API
 - Patronum docs: https://patronum.effector.dev
 - Atomic Router docs: https://atomic-router.github.io
 - Atomic Router + Farfetched integration: https://ff.effector.dev/api/routers/atomic-router
+- Farfetched `createBarrier`: https://ff.effector.dev/api/factories/create_barrier
+- Farfetched `applyBarrier`: https://ff.effector.dev/api/operators/apply_barrier
+- Farfetched `keepFresh`: https://ff.effector.dev/api/operators/keep_fresh
+- Farfetched `cache`: https://ff.effector.dev/api/operators/cache
+- Farfetched `update`: https://ff.effector.dev/api/operators/update
+- Farfetched Atomic Router `freshChain`/`startChain`/`barrierChain`: https://ff.effector.dev/api/routers/atomic-router
+- Atomic Router protected route example: https://atomic-router.github.io/examples/protected-route.html
+- Atomic Router `chainRoute`: https://atomic-router.github.io/api/chain-route.html
 - effector-storage: https://github.com/yumauri/effector-storage
 - effector-action: https://github.com/siberiacancode/effector-action
 - effector-forms: https://github.com/42-px/effector-forms
