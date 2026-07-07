@@ -2,6 +2,17 @@
 
 Use this file for full audits of Effector projects that use Feature-Sliced Design. It complements the normal FSD import-boundary checklist by focusing on ownership of static Effector graph wiring.
 
+## Contents
+
+- [Why normal FSD checks can miss bugs](#why-normal-fsd-checks-can-miss-bugs)
+- [Ownership matrix for cross-cutting Effector flows](#ownership-matrix-for-cross-cutting-effector-flows)
+- [Page models are globally active after import](#page-models-are-globally-active-after-import)
+- [Feature public APIs should expose capabilities, not implementation details](#feature-public-apis-should-expose-capabilities-not-implementation-details)
+- [Page-owned API vs entity-owned API](#page-owned-api-vs-entity-owned-api)
+- [App-level auth/unauthorized policy](#app-level-authunauthorized-policy)
+- [Shared auth headers and domain mirroring](#shared-auth-headers-and-domain-mirroring)
+- [Checklist for full FSD/Effector audit reports](#checklist-for-full-fsdeffector-audit-reports)
+
 ## Why normal FSD checks can miss bugs
 
 A project can have perfect downward imports and still have architectural bugs:

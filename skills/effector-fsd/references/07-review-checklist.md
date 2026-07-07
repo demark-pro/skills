@@ -2,6 +2,20 @@
 
 Use this checklist when reviewing project structure.
 
+## Contents
+
+- [Layers and slices](#layers-and-slices)
+- [Public APIs](#public-apis)
+- [Shared](#shared)
+- [Entities](#entities)
+- [Features](#features)
+- [Pages and widgets](#pages-and-widgets)
+- [Effector model structure](#effector-model-structure)
+- [Farfetched](#farfetched)
+- [Routing and Next.js](#routing-and-nextjs)
+- [Tooling](#tooling)
+- [Full audit addendum for Effector projects](#full-audit-addendum-for-effector-projects)
+
 ## Layers and slices
 
 - Are layers used only when they add value?

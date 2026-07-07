@@ -2,6 +2,16 @@
 
 Use this checklist when reviewing Effector ecosystem code. Use `effector-fsd` for project-structure and import-boundary review.
 
+## Contents
+
+- [Effector](#effector)
+- [Farfetched/contracts](#farfetchedcontracts)
+- [React](#react)
+- [Routing/forms/persistence/i18n](#routingformspersistencei18n)
+- [Packages/tooling](#packagestooling)
+- [Red flags](#red-flags)
+- [Production audit addendum](#production-audit-addendum)
+
 ## Effector
 
 - Are units created statically at module level?

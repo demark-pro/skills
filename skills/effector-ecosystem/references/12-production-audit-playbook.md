@@ -2,6 +2,21 @@
 
 Use this file when reviewing a real project, especially when the user asks for a “full audit”, “best practices audit”, or “why did the previous audit miss issues?”. The goal is to catch cross-cutting problems that are invisible when reviewing files one-by-one.
 
+## Contents
+
+- [Audit method](#audit-method)
+- [Startup, auth restore, and router ordering](#startup-auth-restore-and-router-ordering)
+- [Unauthorized errors are not enough until they affect session](#unauthorized-errors-are-not-enough-until-they-affect-session)
+- [Farfetched concurrency, duplicated starts, and stale results](#farfetched-concurrency-duplicated-starts-and-stale-results)
+- [Page models are static: gate page-local reactions](#page-models-are-static-gate-page-local-reactions)
+- [Scope-safe external callbacks and cleanup](#scope-safe-external-callbacks-and-cleanup)
+- [Reactive purity: `sample.fn` must not throw](#reactive-purity-samplefn-must-not-throw)
+- [Prefer success payload over operation `$data` on success clock](#prefer-success-payload-over-operation-data-on-success-clock)
+- [React callback contracts and local pending](#react-callback-contracts-and-local-pending)
+- [Oversized VM stores and global ticking sources](#oversized-vm-stores-and-global-ticking-sources)
+- [Test isolation](#test-isolation)
+- [Reporting template](#reporting-template)
+
 ## Audit method
 
 Do not only grep for local anti-patterns. Build a small map of the static Effector graph:
