@@ -74,6 +74,60 @@ $value.on(changed, (_, value) => {
 
 Return previous state or model absence explicitly as `null`/union.
 
+### `perform` around a single conditional assignment
+
+```ts
+// bad: one target, one condition
+perform({
+  clock: localeSwitched,
+  source: $history,
+  target: switchLocaleFx,
+  action: (switchLocale, history, locale) => {
+    if (history) switchLocale({ history, locale });
+  },
+});
+```
+
+Use `sample` with `filter`, or move the store dependency into the effect with `attach`:
+
+```ts
+const switchLocaleFx = attach({
+  source: $history,
+  effect: (history, locale: Locale) => {
+    if (!history) return;
+    history.push(localizedPath(history.location, locale));
+  },
+});
+
+sample({ clock: localeSwitched, target: switchLocaleFx });
+```
+
+Keep `perform` for early returns that select among several targets.
+
+### Async or deferred `perform` callbacks
+
+```ts
+perform({
+  clock: saveClicked,
+  target: { $status, saveFx },
+  action: async (target, values) => {
+    target.saveFx(values);
+    await delay(100);
+    target.$status('saved'); // throws: callbacks work only synchronously inside action
+  },
+});
+```
+
+`perform` actions are synchronous. Call an effect from `target` and react to `saveFx.doneData` with a second `sample` or `perform`.
+
+### Pass-through reducer instead of `restore`
+
+```ts
+export const $locale = createStore(defaultLocale).on(localeChanged, (_, locale) => locale);
+```
+
+Use `restore(localeChanged, defaultLocale)`. Keep `createStore(...).on(...)` only when the store needs a config that `restore` cannot take, such as `serialize: 'ignore'`.
+
 ### Oversized all-in-one model
 
 Do not keep several workflows in one large model just because they belong to one page or feature.

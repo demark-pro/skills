@@ -28,7 +28,7 @@ The target architecture:
 Use this skill when the user asks about:
 
 - Effector model design
-- `sample`, `combine`, `attach`, effects, stores, events, factories, Scope, SSR, `scopeBind`
+- `sample`, `combine`, `attach`, `restore`, `perform`, effects, stores, events, factories, Scope, SSR, `scopeBind`
 - React binding with `useUnit`
 - Farfetched query/mutation/barrier/cache/concurrency/contracts
 - Atomic Router route models and route loaders
@@ -136,8 +136,9 @@ Use:
 - `createEffect` only for side effects not already handled by Farfetched
 - `attach` to inject stores/params into an effect declaratively
 - `sample` as the main connection operator
+- `restore` for a store that holds the last payload of an event, `.on` for reducers that read only the store and the payload
 - `combine` for view models
-- `split` or `effector-action` for complex branching when it improves readability
+- `split` or `perform` (Effector 23.5+; `effector-action` on older versions) for complex branching when it improves readability
 - named pure functions for non-trivial data transformation used by `combine`, `sample.fn`, or store `.map`
 - `patronum` for common operators like debounce, throttle, reset, status, pending helpers
 - factories for repeated same-shaped model logic that needs independent instances

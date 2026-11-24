@@ -111,6 +111,8 @@ Do not reimplement these with `watch` and timers unless there is a very specific
 
 Use for readable complex branching from one decision point. Avoid for simple flows where `sample` is clearer.
 
+On Effector 23.5+ prefer the core `perform`, which follows the synchronous `createAction` model with `action` instead of `fn` and has no `update` field or `createAsyncAction` equivalent.
+
 ## @withease/factories
 
 Use for repeated same-shaped Effector model code that needs independent model instances. Prefer it over copy-pasting repeated forms, filters, widgets, or similar models.

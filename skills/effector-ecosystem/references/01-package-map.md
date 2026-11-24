@@ -138,6 +138,8 @@ Do not reimplement common operators with `watch`, timers, or ad-hoc effect chain
 
 ### `effector-action`
 
+Since Effector 23.5.0 the same model ships in the core as `perform`. Prefer `perform` on Effector 23.5+ and keep `effector-action` for older versions; see `03-effector-modeling.md` for the API differences.
+
 Use when a single decision point has many branches and repeated `sample` blocks become harder to read.
 
 Good use case:
@@ -310,7 +312,7 @@ Community package factories are usually recognized by the plugin, but local fact
 - HTTP: Farfetched
 - Runtime validation: `@withease/contracts`
 - Common operators: `patronum`
-- Complex branching: `effector-action` only when it improves readability
+- Complex branching: `perform` (Effector 23.5+) or `effector-action` (older Effector) only when it improves readability
 - Typed routing: `atomic-router`
 - Persistence: `effector-storage` with `contract` and explicit `pickup` for scopes
 - i18n UI only: `react-i18next`

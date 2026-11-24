@@ -8,12 +8,13 @@ Use this file when designing or reviewing Effector models.
 - Unit choice
 - Data flow with `sample`
 - Store rules
+- Store update operators
 - Transformation functions
 - Effects
 - `attach`
 - Explicit app/page startup
 - `scopeBind`
-- Branching
+- Branching and `perform`
 - Patronum
 - Submodel composition
 - Factories
@@ -110,6 +111,43 @@ export const $vm = combine({
 Derived stores are read-only in architecture. Do not use derived stores as `target` or attach `.on`/`.reset` to them after derivation.
 
 Effector treats `undefined` specially in stores. Do not return `undefined` from reducers unless `skipVoid: false` is intentional and documented.
+
+## Store update operators
+
+Pick the smallest operator that expresses the update:
+
+| Update | Operator |
+| --- | --- |
+| Store holds the last payload of an event | `restore(event, initial)` |
+| Next state depends only on the store itself and the payload | `$store.on(event, (state, payload) => next)` |
+| Next state depends on other stores, or the update needs a `filter` | `sample({ clock, source, filter, fn, target: $store })` |
+| One clock updates several units unconditionally | `sample({ clock, target: [$a, $b, fx] })` |
+| Several stores reset by the same clocks | `reset({ clock, target: [$a, $b] })` from Patronum |
+| Branching with early returns that selects among several targets | `perform` (see [Branching and `perform`](#branching-and-perform)) |
+
+```ts
+// good: restore instead of a pass-through reducer
+export const $locale = restore(localeChanged, defaultLocale);
+
+// good: reducer that reads only the store and the payload
+export const $items = createStore<Item[]>([])
+  .on(itemRemoved, (items, id) => items.filter((item) => item.id !== id));
+
+// good: sample when another store takes part
+sample({
+  clock: itemAdded,
+  source: { items: $items, limit: $limit },
+  filter: ({ items, limit }) => items.length < limit,
+  fn: ({ items }, item) => [...items, item],
+  target: $items,
+});
+```
+
+Do not rewrite `.on` into `sample` mechanically. `sample({ clock: e, source: $s, fn, target: $s })` names the store twice and adds nothing when the reducer reads only the store and the payload.
+
+`restore` has no typed config, so `sid`, `name`, and `serialize` cannot be passed to it. Keep `createStore(initial, { serialize: 'ignore' }).on(...)` for non-serializable values such as history objects, DOM nodes, or SDK instances. With the Effector Babel/SWC plugin, `restore` stores get SIDs automatically.
+
+A store used as `clock` already fires only when its value changes, so `$store.updates` is redundant there: use `sample({ clock: $store, target })`.
 
 ## Transformation functions
 
@@ -276,11 +314,77 @@ Do not use `scopeBind` as a replacement for `useUnit` in React components.
 
 Scope loss is common in callbacks registered with external libraries: Next router events, browser history, WebSocket messages, timers, SDK subscriptions, and custom event emitters. Bind once at adapter installation time and keep the rest of the workflow inside Effector units.
 
-## Branching
+## Branching and `perform`
 
 For simple branching, use `sample` with `filter` or `split`.
 
-For complex multi-branch flows, use `effector-action` when it improves readability and still keeps targets explicit.
+For one synchronous decision with early returns that selects among several targets, use `perform` (Effector 23.5.0+). It is the core version of `createAction` from `effector-action`; on older Effector versions use `effector-action`.
+
+```ts
+import { perform } from 'effector';
+
+perform({
+  clock: previewMessageReceived,
+  source: { $data, $docId },
+  target: { mergeFx, $error },
+  action: (target, { data, docId }, message) => {
+    if (data === null) return;
+    if (message.collection !== collection) return;
+    if (message.id !== docId) {
+      target.$error('foreign document');
+      return;
+    }
+    target.mergeFx(message);
+  },
+});
+```
+
+Shape:
+
+- With `clock`, `perform` returns nothing. Without `clock`, it returns a callable event; annotate the payload on the last `action` parameter: `(target, source, payload: string) => {}`.
+- `action(target, source, payload)` with `source`, `action(target, payload)` without it.
+- A leading `$` is stripped from **source** object keys (`{ $name }` → `source.name`) but not from **target** keys (`target.$name(value)`). With a single unit, `target` is the callback itself.
+- `target.$store.reinit()` restores a store's default state.
+- A store that is both read and written must be listed in `source` and in `target`.
+
+Semantics:
+
+- Only called targets fire. Calls are collected and propagated after `action` returns; `source` values are a snapshot and do not change during the action.
+- Call each target at most once per action. A repeated call logs a warning and only the last payload is used.
+- Target callbacks return nothing, including effects: there is no promise or result.
+- If `action` throws, none of the collected calls are applied.
+- `action` must be synchronous. A callback called after `action` returns, for example from `await` or a timer, throws. Start async work through an effect in `target` and react to `fx.doneData`/`fx.failData` with another `sample` or `perform`.
+
+Do not use `perform` when `sample`, `attach`, or `restore` express the flow:
+
+```ts
+// bad: one target and one condition
+perform({
+  clock: formSubmitted,
+  source: $items,
+  target: orderMutation.start,
+  action: (start, items, values) => {
+    if (items.length) start(toOrder(items, values));
+  },
+});
+
+// good
+sample({
+  clock: formSubmitted,
+  source: $items,
+  filter: (items) => items.length > 0,
+  fn: toOrder,
+  target: orderMutation.start,
+});
+
+// bad: unconditional fan-out
+perform({ clock: orderPlaced, target: { cartCleared, formReset }, action: (t) => { t.cartCleared(); t.formReset(); } });
+
+// good
+sample({ clock: orderPlaced, target: [cartCleared, formReset] });
+```
+
+Migrating from `effector-action`: `createAction(clock, { source, target, fn })` becomes `perform({ clock, source, target, action })`, and the clockless form becomes `perform({ source, target, action })`. There is no `update` field, reducer setter, callback return value, or `createAsyncAction` equivalent. After migrating, drop `effector-action` from direct dependencies if nothing imports it.
 
 Do not put business branching in JSX.
 
@@ -290,6 +394,7 @@ Use Patronum for common patterns instead of custom `watch` or timer logic:
 
 - debounce/throttle search
 - `reset` many stores by clock
+- `once` for a clock that must fire only the first time, such as a gate opened twice by React StrictMode
 - `status`/`pending` helpers
 - `condition`
 - `spread`/`reshape`

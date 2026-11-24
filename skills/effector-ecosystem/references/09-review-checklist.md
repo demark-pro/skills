@@ -26,7 +26,10 @@ Use this checklist when reviewing Effector ecosystem code. Use `effector-fsd` fo
 - Are DTO mapping, domain calculations, and UI-only formatting placed at the right ownership boundary?
 - Are derived stores not used as targets?
 - Are reducers not accidentally returning `undefined`?
-- Is complex branching readable (`sample`/`split`/`effector-action`)?
+- Is complex branching readable (`sample`/`split`/`perform`, or `effector-action` before Effector 23.5)?
+- Is `perform` used only for early returns that select among several targets, and not for one conditional target (`sample` + `filter`) or unconditional fan-out (`sample` with a target array)?
+- Is every `perform` action synchronous, free of direct unit calls and I/O, and calling each target at most once?
+- Are pass-through reducers written as `restore(event, initial)`, and is `.on` kept for reducers that read only the store and the payload?
 - Are events named as facts?
 - Is large model logic split into responsibility-based submodels?
 - Is the top-level model mostly orchestration between submodels through `sample`/declarative connections?

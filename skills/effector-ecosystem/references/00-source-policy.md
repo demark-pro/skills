@@ -11,6 +11,7 @@ Before giving code for these APIs, verify the installed/current docs when the an
 
 - Farfetched `createJsonQuery`, `createJsonMutation`, `response.mapError` argument shape, `concurrency`, `keepFresh`, `cache`, `update`, `createBarrier`, `applyBarrier`, and `@farfetched/atomic-router`
 - Effector Scope APIs: `fork`, `allSettled`, `serialize`, `hydrate`, `scopeBind`
+- Effector `perform` (added in 23.5.0): check the installed version before suggesting it over `effector-action`
 - `@effector/next` App Router/Pages Router examples and caveats
 - Atomic Router `chainRoute`, protected routes, SSR support, and SWC plugin factory configuration
 - Effector Babel/SWC plugin `factories` configuration for local factories and ecosystem factories
@@ -24,6 +25,8 @@ Before giving code for these APIs, verify the installed/current docs when the an
 - Effector React `useUnit`: https://effector.dev/en/api/effector-react/useUnit/
 - Effector Store API: https://effector.dev/en/api/effector/Store/
 - Effector `sample`: https://effector.dev/en/api/effector/sample/
+- Effector `perform` (23.5.0+): https://effector.dev/en/api/effector/perform/
+- Effector `restore`: https://effector.dev/en/api/effector/restore/
 - Effector Scope/Fork API: https://effector.dev/en/api/effector/fork/
 - Effector `scopeBind`: https://effector.dev/en/api/effector/scopeBind/
 - Effector explicit app start: https://effector.dev/en/guides/explicit-start/
